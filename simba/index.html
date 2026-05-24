@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMBA (Sistem Informasi Management Berita Acara)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Roboto Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Courier+Prime:ital,wght=0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Link External CSS Kustom SIMBA -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Navigasi Utama / Header SIMBA -->
+    <header class="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg sticky top-0 z-40 px-4 sm:px-6 py-4 flex flex-col gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+            <div class="flex items-center space-x-3">
+                <!-- Logo Aplikasi SIMBA -->
+                <div class="flex items-center space-x-2 bg-white text-red-600 px-3 py-1.5 rounded-xl border border-white/20 shadow-md flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    <span class="font-black text-lg tracking-wider select-none">SIMBA</span>
+                </div>
+                <!-- Kepanjangan Nama SIMBA -->
+                <div class="flex flex-col border-l border-white/30 pl-3">
+                    <span class="font-extrabold tracking-wide text-xs sm:text-sm text-white uppercase leading-tight">Sistem Informasi Manajemen</span>
+                    <span class="font-medium text-[9px] sm:text-[11px] text-red-100 uppercase tracking-wider leading-none mt-0.5">Berita Acara Online</span>
+                </div>
+            </div>
+            
+            <!-- Tombol Aksi di Header Kanan -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <!-- Tombol Simpan ke Google Sheet -->
+                <button onclick="saveToAppSheet()" class="flex-1 sm:flex-initial bg-emerald-600 text-white hover:bg-emerald-700 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center transition duration-200">
+                    <i data-lucide="cloud-lightning" class="w-4 h-4 mr-2 animate-pulse flex-shrink-0"></i>
+                    <span class="truncate">Simpan ke Google Sheet</span>
+                </button>
+                <!-- Tombol Unduh PDF Resmi -->
+                <button onclick="downloadPDF()" class="flex-1 sm:flex-initial bg-white text-red-600 hover:bg-red-50 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center transition duration-200">
+                    <i data-lucide="download" class="w-4 h-4 mr-2 flex-shrink-0"></i>
+                    <span class="truncate">Unduh PDF Resmi</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Kontainer Kandungan Utama -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Lajur Kiri: Barang Masukan Data -->
+        <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-md border border-slate-200/80 space-y-5 overflow-y-auto max-h-[calc(100vh-140px)]">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-red-500 mr-2"></i>
+                    Input Data Berita Acara
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Lengkapi form berikut untuk menyusun dokumen berita acara secara dinamis.</p>
+            </div>
+
+            <!-- Menu Pilihan Jenis Dokumen (BAMB / BAKB) -->
+            <div class="bg-slate-100 p-1 rounded-xl grid grid-cols-2 gap-1 text-xs font-bold border border-slate-200">
+                <button onclick="setDocType('BAMB')" id="btn-type-bamb" class="py-2.5 text-center rounded-lg bg-red-600 text-white shadow-sm flex items-center justify-center transition-all duration-150">
+                    <i data-lucide="arrow-down-left" class="w-4 h-4 mr-1.5 flex-shrink-0"></i>
+                    <span>Masuk Barang (BAMB)</span>
+                </button>
+                <button onclick="setDocType('BAKB')" id="btn-type-bakb" class="py-2.5 text-center rounded-lg text-slate-600 hover:text-slate-800 flex items-center justify-center transition-all duration-150">
+                    <i data-lucide="arrow-up-right" class="w-4 h-4 mr-1.5 flex-shrink-0"></i>
+                    <span>Keluar Barang (BAKB)</span>
+                </button>
+            </div>
+
+            <hr class="border-slate-100">
+
+            <!-- Navigasi Tab Borang (Dioptimalkan menjadi 6 Kolom Responsif) -->
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-100 p-1 rounded-xl text-[10px] font-semibold">
+                <button onclick="switchTab('tab-umum')" id="btn-tab-umum" class="tab-btn py-2 text-center rounded-lg bg-white text-red-600 shadow-sm">Umum</button>
+                <button onclick="switchTab('tab-pihak')" id="btn-tab-pihak" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-slate-800">Pihak</button>
+                <button onclick="switchTab('tab-barang')" id="btn-tab-barang" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-slate-800">Barang</button>
+                <button onclick="switchTab('tab-ttd')" id="btn-tab-ttd" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-slate-800">Ttd & Foto</button>
+                <button onclick="switchTab('tab-appsheet')" id="btn-tab-appsheet" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-emerald-700 flex items-center justify-center space-x-1">
+                    <i data-lucide="database" class="w-3.5 h-3.5 sm:mr-1 flex-shrink-0"></i>
+                    <span>Cloud</span>
+                </button>
+                <button onclick="switchTab('tab-cari')" id="btn-tab-cari" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-red-600 flex items-center justify-center space-x-1">
+                    <i data-lucide="search" class="w-3.5 h-3.5 sm:mr-1 flex-shrink-0"></i>
+                    <span>Cari</span>
+                </button>
+            </div>
+
+            <!-- Tab: Umum -->
+            <div id="tab-umum" class="tab-content active space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Kustomisasi Logo Dokumen</h3>
+                
+                <!-- Muat Naik Logo Gambar Kustom -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <label class="block text-xs font-semibold text-slate-700">Unggah Logo Kustom Dokumen (Opsional)</label>
+                    <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                        <label for="logo-upload" class="cursor-pointer bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm flex items-center transition">
+                            <i data-lucide="upload-cloud" class="w-4 h-4 mr-1.5"></i> Pilih Gambar Logo
+                        </label>
+                        <input id="logo-upload" type="file" class="hidden" accept="image/*" onchange="handleLogoUpload(event)" />
+                        
+                        <button id="btn-remove-logo" onclick="removeLogo()" class="hidden text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-2 rounded-lg flex items-center transition">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5 mr-1.5 text-rose-500"></i> Hapus Logo (Default)
+                        </button>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-2">Informasi Dokumen & Pekerjaan</h3>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Nomor BA (Nomor Dokumen)</label>
+                            <input type="text" id="in-nomor-ba" readonly class="w-full text-sm px-3 py-2 border rounded-lg bg-slate-100 font-mono font-bold text-slate-700 focus:outline-none">
+                        </div>
+                        <div class="pt-6">
+                            <button onclick="incrementBA()" class="bg-slate-200 hover:bg-slate-300 p-2 rounded-lg text-slate-700 transition" title="Tambah Urutan Nomor BA">
+                                <i data-lucide="plus" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Pekerjaan / Service</label>
+                        <input type="text" id="in-pekerjaan" value="CP2-SDN JUNIPER (Change Configuration)" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Lokasi</label>
+                            <input type="text" id="in-lokasi" value="TTC BSD" readonly class="w-full text-sm px-3 py-2 border rounded-lg bg-slate-50 text-slate-600 font-bold focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Lantai</label>
+                            <select id="in-lantai" onchange="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                                <option value="Lantai 1" selected>Lantai 1</option>
+                                <option value="Lantai 2">Lantai 2</option>
+                                <option value="Lantai 3">Lantai 3</option>
+                                <option value="Lantai 4">Lantai 4</option>
+                                <option value="Lantai 5">Lantai 5</option>
+                                <option value="Lantai 6">Lantai 6</option>
+                                <option value="Lantai 7">Lantai 7</option>
+                                <option value="Lantai 8">Lantai 8</option>
+                                <option value="Lantai 9">Lantai 9</option>
+                                <option value="Rooftop">Rooftop</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Hari & Tanggal</label>
+                            <input type="text" id="in-tanggal" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Pukul</label>
+                            <input type="text" id="in-pukul" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-4">Informasi Kontrak PO</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nomor Kontrak PO</label>
+                        <input type="text" id="in-no-kontrak" value="4200053003" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama Project</label>
+                        <input type="text" id="in-nama-project" value="Change Configuration-CP2 SDN Juniper MTM Phase 2" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Pihak -->
+            <div id="tab-pihak" class="tab-content space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Pihak 1: Telkomsel (Owner Project)</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama Owner Project</label>
+                        <input type="text" id="in-p1-nama" value="Ade Yulianto" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Dept. / Divisi</label>
+                        <input type="text" id="in-p1-dept" value="Transport Deployment" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nomor HP</label>
+                        <input type="text" id="in-p1-hp" value="0811100377" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-4">Pihak 2: Mitra Telkomsel</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama Perusahaan Mitra</label>
+                        <input type="text" id="in-p2-perusahaan" value="PT. Media Telekomunikasi Mandiri" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama PIC</label>
+                        <input type="text" id="in-p2-nama" value="Adril Hamnur" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Jabatan</label>
+                        <input type="text" id="in-p2-jabatan" value="Engineer" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nomor HP PIC</label>
+                        <input type="text" id="in-p2-hp" value="082159902141" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Barang -->
+            <div id="tab-barang" class="tab-content space-y-4">
+                <div class="flex justify-between items-center border-b pb-1">
+                    <h3 class="font-semibold text-slate-700 text-sm">Daftar Barang Masuk</h3>
+                    <button onclick="addBarangRow()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded border border-red-200 flex items-center">
+                        <i data-lucide="plus" class="w-3.5 h-3.5 mr-1"></i> Tambah Baris
+                    </button>
+                </div>
+                
+                <div id="barang-inputs-container" class="space-y-3">
+                    <!-- Baris Default Pertama -->
+                    <div class="barang-row bg-slate-50 p-3 rounded-lg border border-slate-200 relative" data-row-id="1">
+                        <div class="absolute top-2 right-2 text-slate-400 font-bold text-xs">#1</div>
+                        <div class="space-y-2 mt-1">
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase text-slate-500">Jenis Barang</label>
+                                <input type="text" value="Wiremanagement Cable" oninput="updatePreview()" class="row-jenis-barang w-full text-xs px-2 py-1.5 border rounded">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase text-slate-500">Jumlah</label>
+                                    <input type="number" value="2" oninput="updatePreview()" class="row-jumlah w-full text-xs px-2 py-1.5 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase text-slate-500">Satuan</label>
+                                    <input type="text" value="Unit" oninput="updatePreview()" class="row-satuan w-full text-xs px-2 py-1.5 border rounded">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase text-slate-500">Keterangan</label>
+                                <input type="text" value="Di pasang di Lantai 8 BF11" oninput="updatePreview()" class="row-keterangan w-full text-xs px-2 py-1.5 border rounded">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Ttd & Foto -->
+            <div id="tab-ttd" class="tab-content space-y-4">
+                <!-- Fitur Mengatur Jarak Jeda Tanda Tangan -->
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Posisi Tanda Tangan</h3>
+                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 mb-4">
+                    <p class="text-[10px] text-slate-500 leading-tight">Atur jarak tanda tangan agar rapat dengan tabel di atasnya atau tetap di bagian paling bawah halaman.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setSigLayout('inline')" id="btn-layout-inline" class="py-1.5 px-3 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition">Rapat dengan Tabel</button>
+                        <button onclick="setSigLayout('bottom')" id="btn-layout-bottom" class="py-1.5 px-3 rounded-lg text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">Di Bawah Halaman</button>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Penandatangan & Tanda Tangan</h3>
+                
+                <div class="space-y-4">
+                    <!-- Tanda Tangan 1 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span id="in-sig1-label" class="text-xs font-bold text-slate-700">1. Pembawa Barang Mitra</span>
+                            <button onclick="openSignatureModal('sig1', document.getElementById('in-sig1-label').innerText.substring(3))" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd1-nama" value="Adril Hamnur" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig1-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 2 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">2. Disetujui Project Owner</span>
+                            <button onclick="openSignatureModal('sig2', 'Disetujui Project Owner')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd2-nama" value="Ade Yulianto" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig2-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 3 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">3. Diperiksa Security</span>
+                            <button onclick="openSignatureModal('sig3', 'Diperiksa Security')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd3-nama" value="Septian" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig3-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 4 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">4. Diperiksa FOS/Core/IT</span>
+                            <button onclick="openSignatureModal('sig4', 'Diperiksa FOS/Core/IT')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd4-nama" value="Sahlan / Prido" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig4-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 5 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">5. Diketahui SPV TTC</span>
+                            <button onclick="openSignatureModal('sig5', 'Diketahui SPV TTC')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd5-nama" value="Diki Chrismanto" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig5-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-4">Lampiran Foto (Maks. 3 Foto)</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <!-- Foto Slot 1 -->
+                    <div class="border rounded-lg p-2 bg-slate-50 text-center relative">
+                        <span class="text-[10px] font-bold text-slate-500 mb-1 block">Foto 1</span>
+                        <label for="foto-upload-0" class="cursor-pointer bg-white border border-dashed rounded p-3 hover:bg-slate-100 flex items-center justify-center h-16 w-full relative overflow-hidden">
+                            <img id="slot-preview-0" class="hidden absolute inset-0 w-full h-full object-cover" alt="Preview 1">
+                            <div id="slot-placeholder-0" class="flex flex-col items-center justify-center"><i data-lucide="plus" class="w-4 h-4 text-slate-400"></i></div>
+                        </label>
+                        <input id="foto-upload-0" type="file" class="hidden" accept="image/*" onchange="handleFotoUpload(event, 0)" />
+                        <button id="slot-remove-0" onclick="removeFoto(0)" class="hidden mt-1 text-[10px] text-red-500 hover:underline"><i data-lucide="trash-2" class="w-3 h-3 inline mr-0.5"></i> Hapus</button>
+                    </div>
+                    <!-- Foto Slot 2 -->
+                    <div class="border rounded-lg p-2 bg-slate-50 text-center relative">
+                        <span class="text-[10px] font-bold text-slate-500 mb-1 block">Foto 2</span>
+                        <label for="foto-upload-1" class="cursor-pointer bg-white border border-dashed rounded p-3 hover:bg-slate-100 flex items-center justify-center h-16 w-full relative overflow-hidden">
+                            <img id="slot-preview-1" class="hidden absolute inset-0 w-full h-full object-cover" alt="Preview 2">
+                            <div id="slot-placeholder-1" class="flex flex-col items-center justify-center"><i data-lucide="plus" class="w-4 h-4 text-slate-400"></i></div>
+                        </label>
+                        <input id="foto-upload-1" type="file" class="hidden" accept="image/*" onchange="handleFotoUpload(event, 1)" />
+                        <button id="slot-remove-1" onclick="removeFoto(1)" class="hidden mt-1 text-[10px] text-red-500 hover:underline"><i data-lucide="trash-2" class="w-3 h-3 inline mr-0.5"></i> Hapus</button>
+                    </div>
+                    <!-- Foto Slot 3 -->
+                    <div class="border rounded-lg p-2 bg-slate-50 text-center relative">
+                        <span class="text-[10px] font-bold text-slate-500 mb-1 block">Foto 3</span>
+                        <label for="foto-upload-2" class="cursor-pointer bg-white border border-dashed rounded p-3 hover:bg-slate-100 flex items-center justify-center h-16 w-full relative overflow-hidden">
+                            <img id="slot-preview-2" class="hidden absolute inset-0 w-full h-full object-cover" alt="Preview 3">
+                            <div id="slot-placeholder-2" class="flex flex-col items-center justify-center"><i data-lucide="plus" class="w-4 h-4 text-slate-400"></i></div>
+                        </label>
+                        <input id="foto-upload-2" type="file" class="hidden" accept="image/*" onchange="handleFotoUpload(event, 2)" />
+                        <button id="slot-remove-2" onclick="removeFoto(2)" class="hidden mt-1 text-[10px] text-red-500 hover:underline"><i data-lucide="trash-2" class="w-3 h-3 inline mr-0.5"></i> Hapus</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: AppSheet Integration -->
+            <div id="tab-appsheet" class="tab-content space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Integrasi Google Sheets SIMBA</h3>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Status Sinkronisasi Cloud</label>
+                        <div class="flex items-center space-x-2 text-xs">
+                            <span id="cloud-sync-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                            <span class="text-slate-800 font-semibold" id="cloud-sync-status">Belum disinkronkan</span>
+                        </div>
+                    </div>
+                    <div class="border-t pt-3 space-y-2">
+                        <label class="block text-xs font-medium text-slate-600">ID Berita Acara Tersimpan</label>
+                        <input type="text" id="appsheet-doc-id" readonly class="w-full bg-white border p-2 rounded text-xs font-mono font-semibold text-slate-700" value="BELUM DISIMPAN">
+                        
+                        <label class="block text-xs font-medium text-slate-600 mt-2">Target Web App URL</label>
+                        <textarea readonly class="w-full bg-slate-100 border p-2 rounded text-[10px] font-mono select-all text-slate-500 h-16 resize-none">https://script.google.com/macros/s/AKfycbwOfmOGdiouHZ-DfM2wDCT2cLnJLDMqGX_Dyo04FYA3-JkyYuTK58CMxfXaQrQGnxlhTg/exec</textarea>
+                        
+                        <p class="text-[10px] text-slate-400">Semua isian formulir, tanda tangan digital (Base64), dan foto lampiran akan dikirimkan secara langsung ke Google Sheets Anda untuk arsip awan yang aman.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Baru: Cari BA -->
+            <div id="tab-cari" class="tab-content space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Cari Dokumen Berita Acara</h3>
+                
+                <div class="space-y-3">
+                    <!-- Form Kontrol Pencarian -->
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" id="search-query" oninput="performSearch()" placeholder="Cari No BA, PIC, Mitra (cth: Rusli), Pekerjaan..." class="w-full text-xs pl-8 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5"></i>
+                        </div>
+                        <button onclick="fetchDocumentsFromSheet()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-2 rounded-lg shadow-sm flex items-center transition flex-shrink-0">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 mr-1.5 font-bold animate-spin-hover"></i> Sinkron
+                        </button>
+                    </div>
+
+                    <!-- Label Status Sinkronisasi/Pencarian -->
+                    <div id="search-status" class="text-[11px] text-slate-500 leading-normal">
+                        Gunakan tombol "Sinkron" untuk memanggil data riwayat BA terbaru langsung dari Google Sheet.
+                    </div>
+
+                    <hr class="border-slate-100">
+
+                    <!-- Daftar Hasil Pencarian (Hasil Render Card) -->
+                    <div id="search-results-list" class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                        <div class="text-center p-6 text-slate-400 space-y-2">
+                            <i data-lucide="cloud" class="w-12 h-12 mx-auto stroke-[1.2]"></i>
+                            <p class="text-xs font-semibold">Silakan klik "Sinkron" untuk memuat basis data.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lajur Kanan: Pratinjau Dokumen Cetak A4 Secara Langsung -->
+        <div class="lg:col-span-7 flex flex-col items-center space-y-4">
+            <div class="w-full flex justify-between items-center bg-slate-200/80 p-3 rounded-xl border border-slate-300/80">
+                <span class="text-xs font-bold text-slate-700 flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                    Live Preview Dokumen (Format A4)
+                </span>
+                <button onclick="triggerResetConfirm()" class="text-xs text-slate-600 hover:text-red-600 flex items-center font-medium transition">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 mr-1"></i> Reset Form
+                </button>
+            </div>
+
+            <!-- Kawasan Tontonan Lembar Pratinjau -->
+            <div class="w-full overflow-x-auto bg-slate-300 p-4 rounded-2xl shadow-inner border border-slate-400/50 flex justify-center preview-container">
+                <!-- Wrapper dirancang block standar agar html2pdf dapat membaca posisi halaman secara berurutan -->
+                <div id="pdf-content" class="document-text bg-white block">
+                    
+                    <!-- HALAMAN 1: Berita Acara Utama -->
+                    <div class="a4-page shadow-2xl" id="pdf-page-1">
+                        <div>
+                            <div class="h-1 bg-red-600 w-full mb-3"></div>
+                            <div class="text-center mb-4 relative">
+                                <!-- Logo Atas Dokumen Berita Acara -->
+                                <div class="flex justify-center mb-2">
+                                    <div class="flex flex-col items-center">
+                                        <!-- Logo Utama / Default -->
+                                        <div id="default-logo-container" class="flex flex-col items-center">
+                                            <svg class="h-12 w-auto" viewBox="0 0 350 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <defs>
+                                                    <linearGradient id="telkomselGrad" x1="0" y1="1" x2="1" y2="0">
+                                                        <stop offset="0%" stop-color="#FFD600"/>
+                                                        <stop offset="35%" stop-color="#FF3D00"/>
+                                                        <stop offset="100%" stop-color="#E50914"/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <text x="65" y="65" fill="#E50914" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" letter-spacing="-1.5">TELKOMSEL</text>
+                                            </svg>
+                                        </div>                                                                                                                                                                                                                                                                            
+                                        <!-- Logo Gantian Jika Dimuat Naik Kustom -->
+                                        <div id="custom-logo-container" class="hidden">
+                                            <img id="p-custom-logo" class="max-h-12 max-w-[200px] object-contain" alt="Custom Logo">
+                                        </div>
+                                    </div>
+                                </div>
+                                <h1 id="p-title-ba" class="text-xs font-bold tracking-wider text-slate-900 leading-none uppercase">BERITA ACARA MASUK BARANG</h1>
+                                <p class="text-[9px] text-slate-700 font-bold tracking-wide mt-1" id="p-nomor-ba">.../TTCBSD/BAMB/V/2026</p>
+                            </div>
+
+                            <!-- Panel Informasi Pekerjaan -->
+                            <div class="space-y-0.5 mb-3 text-[10px]">
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">PEKERJAAN/Service</span><span>:</span><span id="p-pekerjaan" class="font-medium text-slate-900">...</span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">LOKASI</span><span>:</span><span id="p-lokasi" class="font-medium text-slate-900">...</span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">Lantai</span><span>:</span><span id="p-lantai" class="font-medium text-slate-900">...</span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">Hari/Tanggal</span><span>:</span><span id="p-tanggal" class="font-medium text-slate-900"></span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">Pukul</span><span>:</span><span id="p-pukul" class="font-medium text-slate-900"></span></div>
+                            </div>
+
+                            <!-- Maklumat Pihak Yang Bersepakat -->
+                            <div class="space-y-2 mb-3 text-[10px]">
+                                <div class="grid grid-cols-[20px_1fr] items-start">
+                                    <span class="font-semibold">1.</span>
+                                    <div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Nama [Owner Project]</span><span>:</span><span id="p-p1-nama" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Dept. / Div</span><span>:</span><span id="p-p1-dept" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">No. HP</span><span>:</span><span id="p-p1-hp" class="font-medium">...</span></div>
+                                    </div>
+                                </div>
+                                <p class="text-[9.5px] text-slate-700 leading-relaxed font-semibold pl-5">Dalam hal ini bertindak untuk dan atas nama <span class="font-bold text-slate-900">Telkomsel</span>, mengetahui,</p>
+                                <div class="grid grid-cols-[20px_1fr] items-start">
+                                    <span class="font-semibold">2.</span>
+                                    <div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Nama PIC</span><span>:</span><span id="p-p2-nama" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Jabatan</span><span>:</span><span id="p-p2-jabatan" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">No. Hp</span><span>:</span><span id="p-p2-hp" class="font-medium">...</span></div>
+                                    </div>
+                                </div>
+                                <p class="text-[9.5px] text-slate-700 leading-relaxed font-semibold pl-5">Dalam hal ini bertindak untuk dan atas nama <span class="font-bold text-slate-900" id="p-p2-perusahaan">...</span></p>
+                            </div>
+
+                            <p class="text-[9.5px] mb-2 text-slate-700 font-semibold">Dengan ini menyatakan telah dilakukan <span id="p-statement-action" class="font-bold text-slate-900">MASUK BARANG</span> perangkat dengan detail:</p>
+                            
+                            <!-- Jadual Penyenaraian Item Peranti -->
+                            <table class="w-full text-center border-collapse border border-slate-800 text-[9.5px] mb-3">
+                                <thead>
+                                    <tr class="bg-slate-100 border-b border-slate-800">
+                                        <th class="border border-slate-800 py-1 px-1 font-bold w-10">No.</th>
+                                        <th class="border border-slate-800 py-1 px-3 font-bold">Jenis Barang</th>
+                                        <th class="border border-slate-800 py-1 px-1 font-bold w-16">Jumlah</th>
+                                        <th class="border border-slate-800 py-1 px-1 font-bold w-16">Satuan</th>
+                                        <th class="border border-slate-800 py-1 px-3 font-bold">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-table-body"></tbody>
+                            </table>
+
+                            <table class="w-full border-collapse border border-slate-800 text-[9.5px] mb-3">
+                                <tbody>
+                                    <tr>
+                                        <td class="border border-slate-800 py-1 px-3 font-semibold bg-slate-50 w-[150px]">Nomor Kontrak PO</td>
+                                        <td class="border border-slate-800 py-1 px-3 font-medium text-slate-900" id="p-no-kontrak">...</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-800 py-1 px-3 font-semibold bg-slate-50">Project Name</td>
+                                        <td class="border border-slate-800 py-1 px-3 font-bold text-slate-900 leading-tight" id="p-nama-project">...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Ruangan Tanda Tangan -->
+                        <div id="sig-container-block" class="border-t border-slate-200 pt-2 mt-4 transition-all duration-200">
+                            <div class="grid grid-cols-5 gap-2 text-[7.5px] sm:text-[8px] text-center relative items-end">
+                                <!-- TTD 1: Pembawa Barang Mitra -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span id="p-sig1-label" class="font-bold text-slate-700 leading-none">Pembawa Barang Mitra<br>Mitra</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig1" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig1" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig1-nama">...</p>
+                                </div>
+                                <!-- TTD 2: Disetujui Project Owner -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Disetujui<br>Project Owner</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig2" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig2" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig2-nama">...</p>
+                                </div>
+                                <!-- TTD 3: Diperiksa Security -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Diperiksa<br>Security</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig3" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig3" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig3-nama">...</p>
+                                </div>
+                                <!-- TTD 4: Diperiksa FOS/Core/IT -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Diperiksa<br>FOS/Core/IT</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig4" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig4" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig4-nama">...</p>
+                                </div>
+                                <!-- TTD 5: Diketahui SPV TTC -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Diketahui<br>SPV TTC</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig5" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig5" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig5-nama">...</p>
+                                </div>
+                            </div>
+                            <div class="text-[7.5px] text-slate-400 mt-2 text-left">Internal Use Only - Generated by SIMBA</div>
+                        </div>
+                    </div>
+
+                    <!-- HALAMAN 2: Lampiran Foto-foto Bukti Kerja -->
+                    <div class="a4-page shadow-2xl" id="pdf-page-2">
+                        <div class="h-1 bg-red-600 w-full mb-4"></div>
+                        <div class="flex flex-col justify-between h-full">
+                            <div class="text-center pt-8">
+                                <h2 class="text-xs font-bold tracking-widest text-slate-800 uppercase border-b-2 border-slate-800 pb-1 inline-block">FOTO LAMPIRAN BARANG</h2>
+                                <div class="mt-8 flex justify-center w-full">
+                                    <div class="border border-slate-300 bg-slate-50 flex items-center justify-center rounded-lg shadow-sm w-[170mm] h-[170mm] p-4 relative">
+                                        <div id="preview-photos-grid" class="grid gap-4 w-full h-full items-center justify-center hidden"></div>
+                                        <div id="p-barang-foto-placeholder" class="text-center p-8 text-slate-400 space-y-2">
+                                            <i data-lucide="image" class="w-16 h-16 mx-auto stroke-[1.2]"></i>
+                                            <p class="text-xs font-semibold">Belum Ada Foto Terlampir</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Bagian Footer dengan Informasi Bukti Sah & QR Code Digital -->
+                            <div class="border-t border-slate-200 pt-3 flex justify-between items-end mt-auto">
+                                <div class="flex items-center space-x-3 text-left">
+                                    <div class="flex flex-col items-center bg-white border border-slate-200 p-1 rounded shadow-sm w-16 h-16 justify-center">
+                                        <img id="prev-qrcode-img" class="max-w-full max-h-full object-contain" alt="QR Code Bukti Sah" />
+                                    </div>
+                                    <div class="leading-tight">
+                                        <span class="font-bold text-[8.5px] text-slate-700 block">Bukti Sah Dokumen (QR Code)</span>
+                                        <p class="text-[7.5px] text-slate-600 font-mono font-bold mt-0.5" id="p-qrcode-ba-num">BA-01/TTCBSD/BAMB/V/2026</p>
+                                        <p class="text-[6.5px] text-slate-400">Scan untuk Verifikasi Berita Acara Sistem SIMBA</p>
+                                    </div>
+                                </div>
+                                <div class="text-[8px] text-slate-400 text-right">Dokumen Lampiran SIMBA</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Lakaran Tanda Tangan Digital -->
+    <div id="signature-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                    <i data-lucide="signature" class="w-5 h-5 text-red-600 mr-2"></i>
+                    Tanda Tangan: <span id="modal-title" class="text-red-600 ml-1"></span>
+                </h3>
+                <button onclick="closeSignatureModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-slate-50 relative">
+                <canvas id="signature-canvas" class="w-full h-48 block cursor-crosshair bg-white"></canvas>
+                <div class="absolute bottom-2 right-2 text-[10px] text-slate-400 pointer-events-none">Gunakan mouse atau jari anda</div>
+            </div>
+            <div class="flex justify-between items-center mt-5">
+                <button onclick="clearSignatureCanvas()" class="text-slate-500 hover:text-slate-700 font-semibold text-xs flex items-center">
+                    <i data-lucide="trash-2" class="w-4 h-4 mr-1.5"></i> Clear
+                </button>
+                <div class="flex space-x-2">
+                    <button onclick="closeSignatureModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold">Batal</button>
+                    <button onclick="saveSignatureCanvas()" class="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-sm">Terapkan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Dialog Modal untuk Konfirmasi Reset -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200 transform scale-95 transition-all duration-200">
+            <div class="flex items-center space-x-3 text-red-600 mb-4">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                <h3 class="font-bold text-slate-800 text-base">Konfirmasi Reset Form</h3>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                Apakah Anda yakin ingin menyetel ulang seluruh isian formulir? Semua data yang dimasukkan akan hilang dan dikembalikan ke bawaan awal.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">Batal</button>
+                <button onclick="executeResetAll()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md transition">Ya, Reset Sekarang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sistem Notifikasi Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 transform translate-y-20 opacity-0 transition duration-300 ease-out z-50">
+        <span id="toast-icon" class="text-emerald-500"></span>
+        <p id="toast-message" class="text-xs font-medium"></p>
+    </div>
+
+    <!-- Script Utama SIMBA (External File) -->
+    <script src="app.js"></script>
+</body>
+</html>
