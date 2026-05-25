@@ -1,0 +1,2198 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMBA (Sistem Informasi Management Berita Acara)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Roboto Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Courier+Prime:ital,wght=0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        /* ==========================================================================
+           1. BASE STYLES & TYPOGRAPHY
+           ========================================================================== */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .document-text {
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* ==========================================================================
+           2. LAYOUT & CONTAINER STYLES
+           ========================================================================== */
+        /* Membatasi ketinggian kontainer pratinjau di desktop */
+        .preview-container {
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        /* Format halaman A4 standard untuk cetakan fisik sempurna tanpa spillover */
+        .a4-page {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Diubah menjadi flex-start agar posisi ttd bisa fleksibel rapat dengan tabel */
+            width: 210mm;
+            height: 295.6mm; /* Tinggi standar internasional A4 */
+            padding: 12mm 15mm; /* Dioptimalkan agar muat presisi */
+            box-sizing: border-box;
+            overflow: hidden;
+            background: white;
+            color: black;
+            font-size: 11px;
+            line-height: 1.35;
+            page-break-after: always;
+            page-break-inside: avoid;
+        }
+
+        /* Jarak antar halaman hanya pada pratinjau layar monitor */
+        #pdf-content .a4-page:not(:last-child) {
+            margin-bottom: 24px;
+        }
+
+        /* ==========================================================================
+           3. COMPONENT STYLES (Tabs)
+           ========================================================================== */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ==========================================================================
+           4. PRINT & PDF RENDERING STYLES (is-pdf)
+           ========================================================================== */
+        /* CSS KHUSUS PEMBERSIH MODE CETAK PDF (Mengeliminasi celah, bayangan, dan margin kosong) */
+        #pdf-content.is-pdf {
+            width: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            box-shadow: none !important;
+        }
+
+        #pdf-content.is-pdf .a4-page {
+            height: 295.6mm !important; /* Diatur 295.6mm sebagai zona aman mutlak anti-spillover */
+            margin: 0 !important;
+            padding: 12mm 15mm !important;
+            border: none !important;
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+        }
+        
+        /* Mencegah terbuatnya halaman kosong di lembar paling akhir PDF */
+        #pdf-content.is-pdf .a4-page:not(:last-child) {
+            page-break-after: always !important;
+        }
+
+        #pdf-content.is-pdf .a4-page:last-child {
+            page-break-after: avoid !important;
+        }
+
+        /* ==========================================================================
+           5. RESPONSIVE MEDIA QUERIES
+           ========================================================================== */
+        @media (max-width: 1024px) {
+            .preview-container {
+                max-height: none;
+                overflow-y: visible;
+            }
+        }
+
+        /* ==========================================================================
+           6. PREVIEW ONLY MODE STYLE (URL view=1)
+           ========================================================================== */
+        body.preview-only-active {
+            background-color: #f1f5f9 !important;
+            padding-top: 64px !important;
+        }
+
+        body.preview-only-active header {
+            display: none !important;
+        }
+
+        body.preview-only-active main {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            max-width: 900px !important;
+            margin: 0 auto !important;
+            padding: 12px !important;
+        }
+
+        /* Sembunyikan sidebar form input secara total */
+        body.preview-only-active main > div:first-child {
+            display: none !important;
+        }
+
+        /* Jadikan wadah pratinjau kanan lebar penuh */
+        body.preview-only-active main > div:last-child {
+            grid-column: span 12 / span 12 !important;
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+        }
+
+        /* Sembunyikan baris reset form dan live preview label di bagian atas pratinjau */
+        body.preview-only-active main > div:last-child > div:first-child {
+            display: none !important;
+        }
+
+        /* Bersihkan frame wadah luar */
+        body.preview-only-active .preview-container {
+            max-height: none !important;
+            overflow-y: visible !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            width: 100% !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+
+        /* Berikan bayangan dramatis pada lembar pratinjau utama */
+        body.preview-only-active #pdf-content .a4-page {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+            margin-bottom: 32px !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Floating Top Bar untuk Mode Pratinjau Dokumen Saja (Awalnya tersembunyi) -->
+    <div id="preview-mode-bar" class="hidden fixed top-0 left-0 right-0 bg-slate-900 text-white z-50 px-4 py-3.5 shadow-lg flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-1.5 bg-red-600 text-white px-2.5 py-1 rounded-lg border border-red-500 shadow-sm">
+                <span class="font-black text-xs tracking-wider">SIMBA</span>
+            </div>
+            <span class="text-xs font-semibold text-slate-400 hidden sm:inline">|</span>
+            <span class="text-xs font-medium text-slate-300">Pratinjau Berkas Berita Acara</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="downloadPDF()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center transition shadow-md">
+                <i data-lucide="download" class="w-3.5 h-3.5 mr-1.5"></i> Unduh PDF Resmi
+            </button>
+            <button onclick="openFullApp()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center transition border border-slate-700">
+                <i data-lucide="external-link" class="w-3.5 h-3.5 mr-1.5"></i> Buka Aplikasi Lengkap
+            </button>
+        </div>
+    </div>
+
+    <!-- Loader Transisi khusus Mode Pratinjau Dokumen -->
+    <div id="preview-loader" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white space-y-4">
+        <div class="animate-spin inline-block w-10 h-10 border-[3px] border-current border-t-transparent text-red-500 rounded-full" role="status"></div>
+        <div class="text-center">
+            <p class="font-bold text-sm tracking-wide">Memuat Dokumen Berita Acara...</p>
+            <p class="text-xs text-slate-400 mt-1" id="preview-loader-subtext">Menghubungkan ke basis data awan SIMBA</p>
+        </div>
+    </div>
+
+    <!-- Navigasi Utama / Header SIMBA -->
+    <header class="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg sticky top-0 z-40 px-4 sm:px-6 py-4 flex flex-col gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+            <div class="flex items-center space-x-3">
+                <!-- Logo Aplikasi SIMBA -->
+                <div class="flex items-center space-x-2 bg-white text-red-600 px-3 py-1.5 rounded-xl border border-white/20 shadow-md flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    <span class="font-black text-lg tracking-wider select-none">SIMBA</span>
+                </div>
+                <!-- Kepanjangan Nama SIMBA -->
+                <div class="flex flex-col border-l border-white/30 pl-3">
+                    <span class="font-extrabold tracking-wide text-xs sm:text-sm text-white uppercase leading-tight">Sistem Informasi Manajemen</span>
+                    <span class="font-medium text-[9px] sm:text-[11px] text-red-100 uppercase tracking-wider leading-none mt-0.5">Berita Acara Online</span>
+                </div>
+            </div>
+            
+            <!-- Tombol Aksi di Header Kanan -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <!-- Tombol Simpan ke Google Sheet -->
+                <button onclick="saveToAppSheet()" class="flex-1 sm:flex-initial bg-emerald-600 text-white hover:bg-emerald-700 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center transition duration-200">
+                    <i data-lucide="cloud-lightning" class="w-4 h-4 mr-2 animate-pulse flex-shrink-0"></i>
+                    <span class="truncate">Simpan ke Google Sheet</span>
+                </button>
+                <!-- Tombol Unduh PDF Resmi -->
+                <button onclick="downloadPDF()" class="flex-1 sm:flex-initial bg-white text-red-600 hover:bg-red-50 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center transition duration-200">
+                    <i data-lucide="download" class="w-4 h-4 mr-2 flex-shrink-0"></i>
+                    <span class="truncate">Unduh PDF Resmi</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Kontainer Kandungan Utama -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Lajur Kiri: Barang Masukan Data -->
+        <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-md border border-slate-200/80 space-y-5 overflow-y-auto max-h-[calc(100vh-140px)]">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-red-500 mr-2"></i>
+                    Input Data Berita Acara
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Lengkapi form berikut untuk menyusun dokumen berita acara secara dinamis.</p>
+            </div>
+
+            <!-- Menu Pilihan Jenis Dokumen (BAMB / BAKB) -->
+            <div class="bg-slate-100 p-1 rounded-xl grid grid-cols-2 gap-1 text-xs font-bold border border-slate-200">
+                <button onclick="setDocType('BAMB')" id="btn-type-bamb" class="py-2.5 text-center rounded-lg bg-red-600 text-white shadow-sm flex items-center justify-center transition-all duration-150">
+                    <i data-lucide="arrow-down-left" class="w-4 h-4 mr-1.5 flex-shrink-0"></i>
+                    <span>Masuk Barang (BAMB)</span>
+                </button>
+                <button onclick="setDocType('BAKB')" id="btn-type-bakb" class="py-2.5 text-center rounded-lg text-slate-600 hover:text-slate-800 flex items-center justify-center transition-all duration-150">
+                    <i data-lucide="arrow-up-right" class="w-4 h-4 mr-1.5 flex-shrink-0"></i>
+                    <span>Keluar Barang (BAKB)</span>
+                </button>
+            </div>
+
+            <hr class="border-slate-100">
+
+            <!-- Navigasi Tab Borang (Dioptimalkan menjadi 6 Kolom Responsif) -->
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-100 p-1 rounded-xl text-[10px] font-semibold">
+                <button onclick="switchTab('tab-umum')" id="btn-tab-umum" class="tab-btn py-2 text-center rounded-lg bg-white text-red-600 shadow-sm">Umum</button>
+                <button onclick="switchTab('tab-pihak')" id="btn-tab-pihak" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-slate-800">Pihak</button>
+                <button onclick="switchTab('tab-barang')" id="btn-tab-barang" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-slate-800">Barang</button>
+                <button onclick="switchTab('tab-ttd')" id="btn-tab-ttd" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-slate-800">Ttd & Foto</button>
+                <button onclick="switchTab('tab-appsheet')" id="btn-tab-appsheet" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-emerald-700 flex items-center justify-center space-x-1">
+                    <i data-lucide="database" class="w-3.5 h-3.5 sm:mr-1 flex-shrink-0"></i>
+                    <span>Cloud</span>
+                </button>
+                <button onclick="switchTab('tab-cari')" id="btn-tab-cari" class="tab-btn py-2 text-center rounded-lg text-slate-600 hover:text-red-600 flex items-center justify-center space-x-1">
+                    <i data-lucide="search" class="w-3.5 h-3.5 sm:mr-1 flex-shrink-0"></i>
+                    <span>Cari</span>
+                </button>
+            </div>
+
+            <!-- Tab: Umum -->
+            <div id="tab-umum" class="tab-content active space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Kustomisasi Logo Dokumen</h3>
+                
+                <!-- Muat Naik Logo Gambar Kustom -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <label class="block text-xs font-semibold text-slate-700">Unggah Logo Kustom Dokumen (Opsional)</label>
+                    <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                        <label for="logo-upload" class="cursor-pointer bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm flex items-center transition">
+                            <i data-lucide="upload-cloud" class="w-4 h-4 mr-1.5"></i> Pilih Gambar Logo
+                        </label>
+                        <input id="logo-upload" type="file" class="hidden" accept="image/*" onchange="handleLogoUpload(event)" />
+                        
+                        <button id="btn-remove-logo" onclick="removeLogo()" class="hidden text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-2 rounded-lg flex items-center transition">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5 mr-1.5 text-rose-500"></i> Hapus Logo (Default)
+                        </button>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-2">Informasi Dokumen & Pekerjaan</h3>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Nomor BA (Nomor Dokumen)</label>
+                            <input type="text" id="in-nomor-ba" readonly class="w-full text-sm px-3 py-2 border rounded-lg bg-slate-100 font-mono font-bold text-slate-700 focus:outline-none">
+                        </div>
+                        <div class="pt-6">
+                            <button onclick="incrementBA()" class="bg-slate-200 hover:bg-slate-300 p-2 rounded-lg text-slate-700 transition" title="Tambah Urutan Nomor BA">
+                                <i data-lucide="plus" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Pekerjaan / Service</label>
+                        <input type="text" id="in-pekerjaan" value="CP2-SDN JUNIPER (Change Configuration)" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Lokasi</label>
+                            <input type="text" id="in-lokasi" value="TTC BSD" readonly class="w-full text-sm px-3 py-2 border rounded-lg bg-slate-50 text-slate-600 font-bold focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Lantai</label>
+                            <select id="in-lantai" onchange="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                                <option value="Lantai 1" selected>Lantai 1</option>
+                                <option value="Lantai 2">Lantai 2</option>
+                                <option value="Lantai 3">Lantai 3</option>
+                                <option value="Lantai 4">Lantai 4</option>
+                                <option value="Lantai 5">Lantai 5</option>
+                                <option value="Lantai 6">Lantai 6</option>
+                                <option value="Lantai 7">Lantai 7</option>
+                                <option value="Lantai 8">Lantai 8</option>
+                                <option value="Lantai 9">Lantai 9</option>
+                                <option value="Rooftop">Rooftop</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Hari & Tanggal</label>
+                            <input type="text" id="in-tanggal" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Pukul</label>
+                            <input type="text" id="in-pukul" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-4">Informasi Kontrak PO</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nomor Kontrak PO</label>
+                        <input type="text" id="in-no-kontrak" value="4200053003" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama Project</label>
+                        <input type="text" id="in-nama-project" value="Change Configuration-CP2 SDN Juniper MTM Phase 2" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Pihak -->
+            <div id="tab-pihak" class="tab-content space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Pihak 1: Telkomsel (Owner Project)</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama Owner Project</label>
+                        <input type="text" id="in-p1-nama" value="Ade Yulianto" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Dept. / Divisi</label>
+                        <input type="text" id="in-p1-dept" value="Transport Deployment" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nomor HP</label>
+                        <input type="text" id="in-p1-hp" value="0811100377" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-4">Pihak 2: Mitra Telkomsel</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama Perusahaan Mitra</label>
+                        <input type="text" id="in-p2-perusahaan" value="PT. Media Telekomunikasi Mandiri" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nama PIC</label>
+                        <input type="text" id="in-p2-nama" value="Adril Hamnur" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Jabatan</label>
+                        <input type="text" id="in-p2-jabatan" value="Engineer" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nomor HP PIC</label>
+                        <input type="text" id="in-p2-hp" value="082159902141" oninput="updatePreview()" class="w-full text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Barang -->
+            <div id="tab-barang" class="tab-content space-y-4">
+                <div class="flex justify-between items-center border-b pb-1">
+                    <h3 class="font-semibold text-slate-700 text-sm">Daftar Barang Masuk</h3>
+                    <button onclick="addBarangRow()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded border border-red-200 flex items-center">
+                        <i data-lucide="plus" class="w-3.5 h-3.5 mr-1"></i> Tambah Baris
+                    </button>
+                </div>
+                
+                <div id="barang-inputs-container" class="space-y-3">
+                    <!-- Baris Default Pertama -->
+                    <div class="barang-row bg-slate-50 p-3 rounded-lg border border-slate-200 relative" data-row-id="1">
+                        <div class="absolute top-2 right-2 text-slate-400 font-bold text-xs">#1</div>
+                        <div class="space-y-2 mt-1">
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase text-slate-500">Jenis Barang</label>
+                                <input type="text" value="Wiremanagement Cable" oninput="updatePreview()" class="row-jenis-barang w-full text-xs px-2 py-1.5 border rounded">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase text-slate-500">Jumlah</label>
+                                    <input type="number" value="2" oninput="updatePreview()" class="row-jumlah w-full text-xs px-2 py-1.5 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold uppercase text-slate-500">Satuan</label>
+                                    <input type="text" value="Unit" oninput="updatePreview()" class="row-satuan w-full text-xs px-2 py-1.5 border rounded">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase text-slate-500">Keterangan</label>
+                                <input type="text" value="Di pasang di Lantai 8 BF11" oninput="updatePreview()" class="row-keterangan w-full text-xs px-2 py-1.5 border rounded">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Ttd & Foto -->
+            <div id="tab-ttd" class="tab-content space-y-4">
+                <!-- Fitur Mengatur Jarak Jeda Tanda Tangan -->
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Posisi Tanda Tangan</h3>
+                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 mb-4">
+                    <p class="text-[10px] text-slate-500 leading-tight">Atur jarak tanda tangan agar rapat dengan tabel di atasnya atau tetap di bagian paling bawah halaman.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setSigLayout('inline')" id="btn-layout-inline" class="py-1.5 px-3 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition">Rapat dengan Tabel</button>
+                        <button onclick="setSigLayout('bottom')" id="btn-layout-bottom" class="py-1.5 px-3 rounded-lg text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">Di Bawah Halaman</button>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Penandatangan & Tanda Tangan</h3>
+                
+                <div class="space-y-4">
+                    <!-- Tanda Tangan 1 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span id="in-sig1-label" class="text-xs font-bold text-slate-700">1. Pembawa Barang Mitra</span>
+                            <button onclick="openSignatureModal('sig1', document.getElementById('in-sig1-label').innerText.substring(3))" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd1-nama" value="Adril Hamnur" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig1-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 2 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">2. Disetujui Project Owner</span>
+                            <button onclick="openSignatureModal('sig2', 'Disetujui Project Owner')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd2-nama" value="Ade Yulianto" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig2-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 3 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">3. Diperiksa Security</span>
+                            <button onclick="openSignatureModal('sig3', 'Diperiksa Security')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd3-nama" value="Septian" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig3-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 4 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">4. Diperiksa FOS/Core/IT</span>
+                            <button onclick="openSignatureModal('sig4', 'Diperiksa FOS/Core/IT')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd4-nama" value="Sahlan / Prido" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig4-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+
+                    <!-- Tanda Tangan 5 -->
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-700">5. Diketahui SPV TTC</span>
+                            <button onclick="openSignatureModal('sig5', 'Diketahui SPV TTC')" class="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-semibold flex items-center">
+                                <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i> Gambar TTD
+                            </button>
+                        </div>
+                        <input type="text" id="in-ttd5-nama" value="Diki Chrismanto" oninput="updatePreview()" class="w-full text-xs px-2 py-1 border rounded mb-1" placeholder="Nama Lengkap">
+                        <div class="h-10 border border-dashed rounded bg-white flex items-center justify-center text-[10px] text-slate-400" id="preview-sig5-status">
+                            Belum Ada Tanda Tangan
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1 pt-4">Lampiran Foto (Maks. 3 Foto)</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <!-- Foto Slot 1 -->
+                    <div class="border rounded-lg p-2 bg-slate-50 text-center relative">
+                        <span class="text-[10px] font-bold text-slate-500 mb-1 block">Foto 1</span>
+                        <label for="foto-upload-0" class="cursor-pointer bg-white border border-dashed rounded p-3 hover:bg-slate-100 flex items-center justify-center h-16 w-full relative overflow-hidden">
+                            <img id="slot-preview-0" class="hidden absolute inset-0 w-full h-full object-cover" alt="Preview 1">
+                            <div id="slot-placeholder-0" class="flex flex-col items-center justify-center"><i data-lucide="plus" class="w-4 h-4 text-slate-400"></i></div>
+                        </label>
+                        <input id="foto-upload-0" type="file" class="hidden" accept="image/*" onchange="handleFotoUpload(event, 0)" />
+                        <button id="slot-remove-0" onclick="removeFoto(0)" class="hidden mt-1 text-[10px] text-red-500 hover:underline"><i data-lucide="trash-2" class="w-3 h-3 inline mr-0.5"></i> Hapus</button>
+                    </div>
+                    <!-- Foto Slot 2 -->
+                    <div class="border rounded-lg p-2 bg-slate-50 text-center relative">
+                        <span class="text-[10px] font-bold text-slate-500 mb-1 block">Foto 2</span>
+                        <label for="foto-upload-1" class="cursor-pointer bg-white border border-dashed rounded p-3 hover:bg-slate-100 flex items-center justify-center h-16 w-full relative overflow-hidden">
+                            <img id="slot-preview-1" class="hidden absolute inset-0 w-full h-full object-cover" alt="Preview 2">
+                            <div id="slot-placeholder-1" class="flex flex-col items-center justify-center"><i data-lucide="plus" class="w-4 h-4 text-slate-400"></i></div>
+                        </label>
+                        <input id="foto-upload-1" type="file" class="hidden" accept="image/*" onchange="handleFotoUpload(event, 1)" />
+                        <button id="slot-remove-1" onclick="removeFoto(1)" class="hidden mt-1 text-[10px] text-red-500 hover:underline"><i data-lucide="trash-2" class="w-3 h-3 inline mr-0.5"></i> Hapus</button>
+                    </div>
+                    <!-- Foto Slot 3 -->
+                    <div class="border rounded-lg p-2 bg-slate-50 text-center relative">
+                        <span class="text-[10px] font-bold text-slate-500 mb-1 block">Foto 3</span>
+                        <label for="foto-upload-2" class="cursor-pointer bg-white border border-dashed rounded p-3 hover:bg-slate-100 flex items-center justify-center h-16 w-full relative overflow-hidden">
+                            <img id="slot-preview-2" class="hidden absolute inset-0 w-full h-full object-cover" alt="Preview 3">
+                            <div id="slot-placeholder-2" class="flex flex-col items-center justify-center"><i data-lucide="plus" class="w-4 h-4 text-slate-400"></i></div>
+                        </label>
+                        <input id="foto-upload-2" type="file" class="hidden" accept="image/*" onchange="handleFotoUpload(event, 2)" />
+                        <button id="slot-remove-2" onclick="removeFoto(2)" class="hidden mt-1 text-[10px] text-red-500 hover:underline"><i data-lucide="trash-2" class="w-3 h-3 inline mr-0.5"></i> Hapus</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: AppSheet Integration -->
+            <div id="tab-appsheet" class="tab-content space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Integrasi Google Sheets SIMBA</h3>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Status Sinkronisasi Cloud</label>
+                        <div class="flex items-center space-x-2 text-xs">
+                            <span id="cloud-sync-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                            <span class="text-slate-800 font-semibold" id="cloud-sync-status">Belum disinkronkan</span>
+                        </div>
+                    </div>
+
+                    <!-- FIELD BARU: Kustomisasi Domain Share -->
+                    <div class="border-t pt-3 space-y-2">
+                        <label class="block text-xs font-bold text-slate-700">Domain Publik / Link Hosting (Penting)</label>
+                        <input type="text" id="in-custom-domain" oninput="saveCustomDomain()" placeholder="https://username.github.io/simba" class="w-full bg-white border p-2 rounded-lg text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <p class="text-[10px] text-slate-400 leading-normal">PENTING: Masukkan URL tempat Anda meletakkan file HTML ini (seperti GitHub Pages atau Vercel). Jika kosong, SIMBA menggunakan domain sandbox saat ini yang tidak bisa dibuka oleh orang lain.</p>
+                    </div>
+
+                    <div class="border-t pt-3 space-y-2">
+                        <label class="block text-xs font-medium text-slate-600">ID Berita Acara Tersimpan</label>
+                        <input type="text" id="appsheet-doc-id" readonly class="w-full bg-white border p-2 rounded text-xs font-mono font-semibold text-slate-700" value="BELUM DISIMPAN">
+                        
+                        <label class="block text-xs font-medium text-slate-600 mt-2">Target Web App URL</label>
+                        <textarea readonly class="w-full bg-slate-100 border p-2 rounded text-[10px] font-mono select-all text-slate-500 h-16 resize-none">https://script.google.com/macros/s/AKfycbwOfmOGdiouHZ-DfM2wDCT2cLnJLDMqGX_Dyo04FYA3-JkyYuTK58CMxfXaQrQGnxlhTg/exec</textarea>
+                        
+                        <p class="text-[10px] text-slate-400">Semua isian formulir, tanda tangan digital (Base64), dan foto lampiran akan dikirimkan secara langsung ke Google Sheets Anda untuk arsip awan yang aman.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Baru: Cari BA -->
+            <div id="tab-cari" class="tab-content space-y-4">
+                <h3 class="font-semibold text-slate-700 text-sm border-b pb-1">Cari Dokumen Berita Acara</h3>
+                
+                <div class="space-y-3">
+                    <!-- Form Kontrol Pencarian -->
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" id="search-query" oninput="performSearch()" placeholder="Cari No BA, PIC, Mitra (cth: Rusli), Pekerjaan..." class="w-full text-xs pl-8 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5"></i>
+                        </div>
+                        <button onclick="fetchDocumentsFromSheet()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-2 rounded-lg shadow-sm flex items-center transition flex-shrink-0">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 mr-1.5 font-bold animate-spin-hover"></i> Sinkron
+                        </button>
+                    </div>
+
+                    <!-- Label Status Sinkronisasi/Pencarian -->
+                    <div id="search-status" class="text-[11px] text-slate-500 leading-normal">
+                        Gunakan tombol "Sinkron" untuk memanggil data riwayat BA terbaru langsung dari Google Sheet.
+                    </div>
+
+                    <hr class="border-slate-100">
+
+                    <!-- Daftar Hasil Pencarian (Hasil Render Card) -->
+                    <div id="search-results-list" class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                        <div class="text-center p-6 text-slate-400 space-y-2">
+                            <i data-lucide="cloud" class="w-12 h-12 mx-auto stroke-[1.2]"></i>
+                            <p class="text-xs font-semibold">Silakan klik "Sinkron" untuk memuat basis data.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lajur Kanan: Pratinjau Dokumen Cetak A4 Secara Langsung -->
+        <div class="lg:col-span-7 flex flex-col items-center space-y-4">
+            <div class="w-full flex justify-between items-center bg-slate-200/80 p-3 rounded-xl border border-slate-300/80">
+                <span class="text-xs font-bold text-slate-700 flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                    Live Preview Dokumen (Format A4)
+                </span>
+                <button onclick="triggerResetConfirm()" class="text-xs text-slate-600 hover:text-red-600 flex items-center font-medium transition">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 mr-1"></i> Reset Form
+                </button>
+            </div>
+
+            <!-- Kawasan Tontonan Lembar Pratinjau -->
+            <div class="w-full overflow-x-auto bg-slate-300 p-4 rounded-2xl shadow-inner border border-slate-400/50 flex justify-center preview-container">
+                <!-- Wrapper dirancang block standar agar html2pdf dapat membaca posisi halaman secara berurutan -->
+                <div id="pdf-content" class="document-text bg-white block">
+                    
+                    <!-- HALAMAN 1: Berita Acara Utama -->
+                    <div class="a4-page shadow-2xl" id="pdf-page-1">
+                        <div>
+                            <div class="h-1 bg-red-600 w-full mb-3"></div>
+                            <div class="text-center mb-4 relative">
+                                <!-- Logo Atas Dokumen Berita Acara -->
+                                <div class="flex justify-center mb-2">
+                                    <div class="flex flex-col items-center">
+                                        <!-- Logo Utama / Default -->
+                                        <div id="default-logo-container" class="flex flex-col items-center">
+                                            <svg class="h-12 w-auto" viewBox="0 0 350 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <defs>
+                                                    <linearGradient id="telkomselGrad" x1="0" y1="1" x2="1" y2="0">
+                                                        <stop offset="0%" stop-color="#FFD600"/>
+                                                        <stop offset="35%" stop-color="#FF3D00"/>
+                                                        <stop offset="100%" stop-color="#E50914"/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <text x="65" y="65" fill="#E50914" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" letter-spacing="-1.5">TELKOMSEL</text>
+                                            </svg>
+                                        </div>                                                                                                                                                                                                                                                                            
+                                        <!-- Logo Gantian Jika Dimuat Naik Kustom -->
+                                        <div id="custom-logo-container" class="hidden">
+                                            <img id="p-custom-logo" class="max-h-12 max-w-[200px] object-contain" alt="Custom Logo">
+                                        </div>
+                                    </div>
+                                </div>
+                                <h1 id="p-title-ba" class="text-xs font-bold tracking-wider text-slate-900 leading-none uppercase">BERITA ACARA MASUK BARANG</h1>
+                                <p class="text-[9px] text-slate-700 font-bold tracking-wide mt-1" id="p-nomor-ba">.../TTCBSD/BAMB/V/2026</p>
+                            </div>
+
+                            <!-- Panel Informasi Pekerjaan -->
+                            <div class="space-y-0.5 mb-3 text-[10px]">
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">PEKERJAAN/Service</span><span>:</span><span id="p-pekerjaan" class="font-medium text-slate-900">...</span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">LOKASI</span><span>:</span><span id="p-lokasi" class="font-medium text-slate-900">...</span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">Lantai</span><span>:</span><span id="p-lantai" class="font-medium text-slate-900">...</span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">Hari/Tanggal</span><span>:</span><span id="p-tanggal" class="font-medium text-slate-900"></span></div>
+                                <div class="grid grid-cols-[130px_10px_1fr]"><span class="font-semibold uppercase text-slate-700">Pukul</span><span>:</span><span id="p-pukul" class="font-medium text-slate-900"></span></div>
+                            </div>
+
+                            <!-- Maklumat Pihak Yang Bersepakat -->
+                            <div class="space-y-2 mb-3 text-[10px]">
+                                <div class="grid grid-cols-[20px_1fr] items-start">
+                                    <span class="font-semibold">1.</span>
+                                    <div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Nama [Owner Project]</span><span>:</span><span id="p-p1-nama" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Dept. / Div</span><span>:</span><span id="p-p1-dept" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">No. HP</span><span>:</span><span id="p-p1-hp" class="font-medium">...</span></div>
+                                    </div>
+                                </div>
+                                <p class="text-[9.5px] text-slate-700 leading-relaxed font-semibold pl-5">Dalam hal ini bertindak untuk dan atas nama <span class="font-bold text-slate-900">Telkomsel</span>, mengetahui,</p>
+                                <div class="grid grid-cols-[20px_1fr] items-start">
+                                    <span class="font-semibold">2.</span>
+                                    <div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Nama PIC</span><span>:</span><span id="p-p2-nama" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">Jabatan</span><span>:</span><span id="p-p2-jabatan" class="font-medium">...</span></div>
+                                        <div class="grid grid-cols-[150px_10px_1fr]"><span class="font-semibold">No. Hp</span><span>:</span><span id="p-p2-hp" class="font-medium">...</span></div>
+                                    </div>
+                                </div>
+                                <p class="text-[9.5px] text-slate-700 leading-relaxed font-semibold pl-5">Dalam hal ini bertindak untuk dan atas nama <span class="font-bold text-slate-900" id="p-p2-perusahaan">...</span></p>
+                            </div>
+
+                            <p class="text-[9.5px] mb-2 text-slate-700 font-semibold">Dengan ini menyatakan telah dilakukan <span id="p-statement-action" class="font-bold text-slate-900">MASUK BARANG</span> perangkat dengan detail:</p>
+                            
+                            <!-- Jadual Penyenaraian Item Peranti -->
+                            <table class="w-full text-center border-collapse border border-slate-800 text-[9.5px] mb-3">
+                                <thead>
+                                    <tr class="bg-slate-100 border-b border-slate-800">
+                                        <th class="border border-slate-800 py-1 px-1 font-bold w-10">No.</th>
+                                        <th class="border border-slate-800 py-1 px-3 font-bold">Jenis Barang</th>
+                                        <th class="border border-slate-800 py-1 px-1 font-bold w-16">Jumlah</th>
+                                        <th class="border border-slate-800 py-1 px-1 font-bold w-16">Satuan</th>
+                                        <th class="border border-slate-800 py-1 px-3 font-bold">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-table-body"></tbody>
+                            </table>
+
+                            <table class="w-full border-collapse border border-slate-800 text-[9.5px] mb-3">
+                                <tbody>
+                                    <tr>
+                                        <td class="border border-slate-800 py-1 px-3 font-semibold bg-slate-50 w-[150px]">Nomor Kontrak PO</td>
+                                        <td class="border border-slate-800 py-1 px-3 font-medium text-slate-900" id="p-no-kontrak">...</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-800 py-1 px-3 font-semibold bg-slate-50">Project Name</td>
+                                        <td class="border border-slate-800 py-1 px-3 font-bold text-slate-900 leading-tight" id="p-nama-project">...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Ruangan Tanda Tangan -->
+                        <div id="sig-container-block" class="border-t border-slate-200 pt-2 mt-4 transition-all duration-200">
+                            <div class="grid grid-cols-5 gap-2 text-[7.5px] sm:text-[8px] text-center relative items-end">
+                                <!-- TTD 1: Pembawa Barang Mitra -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span id="p-sig1-label" class="font-bold text-slate-700 leading-none">Pembawa Barang Mitra<br>Mitra</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig1" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig1" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig1-nama">...</p>
+                                </div>
+                                <!-- TTD 2: Disetujui Project Owner -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Disetujui<br>Project Owner</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig2" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig2" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig2-nama">...</p>
+                                </div>
+                                <!-- TTD 3: Diperiksa Security -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Diperiksa<br>Security</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig3" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig3" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig3-nama">...</p>
+                                </div>
+                                <!-- TTD 4: Diperiksa FOS/Core/IT -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Diperiksa<br>FOS/Core/IT</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig4" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig4" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig4-nama">...</p>
+                                </div>
+                                <!-- TTD 5: Diketahui SPV TTC -->
+                                <div class="flex flex-col justify-between h-[95px]">
+                                    <span class="font-bold text-slate-700 leading-none">Diketahui<br>SPV TTC</span>
+                                    <div class="h-10 flex items-center justify-center relative">
+                                        <img id="img-sig5" class="max-h-full max-w-full object-contain mx-auto hidden" alt="TTD">
+                                        <div id="line-sig5" class="w-12 h-[1px] bg-slate-300 absolute bottom-1"></div>
+                                    </div>
+                                    <p class="font-bold border-b border-dashed border-slate-400 pb-0.5 mx-0.5 text-slate-900 truncate" id="p-sig5-nama">...</p>
+                                </div>
+                            </div>
+                            <div class="text-[7.5px] text-slate-400 mt-2 text-left">Internal Use Only - Generated by SIMBA</div>
+                        </div>
+                    </div>
+
+                    <!-- HALAMAN 2: Lampiran Foto-foto Bukti Kerja -->
+                    <div class="a4-page shadow-2xl" id="pdf-page-2">
+                        <div class="h-1 bg-red-600 w-full mb-4"></div>
+                        <div class="flex flex-col justify-between h-full">
+                            <div class="text-center pt-8">
+                                <h2 class="text-xs font-bold tracking-widest text-slate-800 uppercase border-b-2 border-slate-800 pb-1 inline-block">FOTO LAMPIRAN BARANG</h2>
+                                <div class="mt-8 flex justify-center w-full">
+                                    <div class="border border-slate-300 bg-slate-50 flex items-center justify-center rounded-lg shadow-sm w-[170mm] h-[170mm] p-4 relative">
+                                        <div id="preview-photos-grid" class="grid gap-4 w-full h-full items-center justify-center hidden"></div>
+                                        <div id="p-barang-foto-placeholder" class="text-center p-8 text-slate-400 space-y-2">
+                                            <i data-lucide="image" class="w-16 h-16 mx-auto stroke-[1.2]"></i>
+                                            <p class="text-xs font-semibold">Belum Ada Foto Terlampir</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Bagian Footer dengan Informasi Bukti Sah & QR Code Digital -->
+                            <div class="border-t border-slate-200 pt-3 flex justify-between items-end mt-auto">
+                                <div class="flex items-center space-x-3 text-left">
+                                    <div class="flex flex-col items-center bg-white border border-slate-200 p-1 rounded shadow-sm w-16 h-16 justify-center">
+                                        <img id="prev-qrcode-img" class="max-w-full max-h-full object-contain" alt="QR Code Bukti Sah" />
+                                    </div>
+                                    <div class="leading-tight">
+                                        <span class="font-bold text-[8.5px] text-slate-700 block">Bukti Sah Dokumen (QR Code)</span>
+                                        <p class="text-[7.5px] text-slate-600 font-mono font-bold mt-0.5" id="p-qrcode-ba-num">BA-01/TTCBSD/BAMB/V/2026</p>
+                                        <p class="text-[6.5px] text-slate-400">Scan untuk Verifikasi Berita Acara Sistem SIMBA</p>
+                                    </div>
+                                </div>
+                                <div class="text-[8px] text-slate-400 text-right">Dokumen Lampiran SIMBA</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Lakaran Tanda Tangan Digital -->
+    <div id="signature-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                    <i data-lucide="signature" class="w-5 h-5 text-red-600 mr-2"></i>
+                    Tanda Tangan: <span id="modal-title" class="text-red-600 ml-1"></span>
+                </h3>
+                <button onclick="closeSignatureModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-slate-50 relative">
+                <canvas id="signature-canvas" class="w-full h-48 block cursor-crosshair bg-white"></canvas>
+                <div class="absolute bottom-2 right-2 text-[10px] text-slate-400 pointer-events-none">Gunakan mouse atau jari anda</div>
+            </div>
+            <div class="flex justify-between items-center mt-5">
+                <button onclick="clearSignatureCanvas()" class="text-slate-500 hover:text-slate-700 font-semibold text-xs flex items-center">
+                    <i data-lucide="trash-2" class="w-4 h-4 mr-1.5"></i> Clear
+                </button>
+                <div class="flex space-x-2">
+                    <button onclick="closeSignatureModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold">Batal</button>
+                    <button onclick="saveSignatureCanvas()" class="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-sm">Terapkan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Bagikan Link Preview Berkas -->
+    <div id="share-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200 transform transition-all duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                    <i data-lucide="share-2" class="w-5 h-5 text-red-600 mr-2"></i>
+                    Bagikan Live Preview Dokumen
+                </h3>
+                <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Tautan di bawah ini dirancang khusus untuk menampilkan dokumen pratinjau Berita Acara secara langsung dan rapi, tanpa membuka seluruh form pengeditan aplikasi SIMBA.
+                </p>
+                <div class="bg-slate-50 border p-3 rounded-xl space-y-1">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Nomor Berita Acara</span>
+                    <span id="share-modal-ba-num" class="text-xs font-mono font-bold text-slate-800">BA-01/TTCBSD/BAMB/V/2026</span>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-600">Tautan Pratinjau Dokumen Saja</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="share-modal-link-input" readonly class="flex-1 bg-slate-50 border px-3 py-2 rounded-lg text-xs font-mono text-slate-600 focus:outline-none select-all">
+                        <button onclick="copyShareModalLink()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition flex items-center shadow-sm">
+                            <i data-lucide="copy" class="w-4 h-4 mr-1"></i> Salin
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <a id="share-modal-test-btn" href="#" target="_blank" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5 mr-1.5"></i> Tes Tautan
+                </a>
+                <button onclick="closeShareModal()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md transition">
+                    Selesai
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Dialog Modal untuk Konfirmasi Reset -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200 transform scale-95 transition-all duration-200">
+            <div class="flex items-center space-x-3 text-red-600 mb-4">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                <h3 class="font-bold text-slate-800 text-base">Konfirmasi Reset Form</h3>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                Apakah Anda yakin ingin menyetel ulang seluruh isian formulir? Semua data yang dimasukkan akan hilang dan dikembalikan ke bawaan awal.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">Batal</button>
+                <button onclick="executeResetAll()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md transition">Ya, Reset Sekarang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sistem Notifikasi Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 transform translate-y-20 opacity-0 transition duration-300 ease-out z-50">
+        <span id="toast-icon" class="text-emerald-500"></span>
+        <p id="toast-message" class="text-xs font-medium"></p>
+    </div>
+
+    <script>
+        // Init icon
+        lucide.createIcons();
+
+        // State global aplikasi
+        let signatures = {
+            sig1: null, sig2: null, sig3: null, sig4: null, sig5: null
+        };
+        let customLogo = null;
+        let photos = [null, null, null];
+        let activeSignatureKey = '';
+        let isDrawing = false;
+        let sigCanvas, sigCtx;
+        let signatureLayout = 'inline'; // Default layout rapat dengan tabel
+        let docType = 'BAMB'; // Default Jenis Dokumen: BAMB
+        let cachedDocuments = []; // DEKLARASI GLOBAL SANGAT PENTING
+
+        // Simulasi Dokumen Offline / Fallback
+        const mockDocs = [
+          {
+            nomor_ba: "01/TTCBSD/BAMB/V/2026",
+            jenis_ba: "BAMB",
+            pekerjaan: "CP2-SDN JUNIPER (Change Configuration)",
+            lokasi: "TTC BSD",
+            lantai: "Lantai 1",
+            tanggal: "Senin, 18 Mei 2026",
+            pukul: "10.00 WIB",
+            no_kontrak: "4200053003",
+            nama_project: "Change Configuration-CP2 SDN Juniper MTM Phase 2",
+            p1_nama: "Ade Yulianto",
+            p1_dept: "Transport Deployment",
+            p1_hp: "0811100377",
+            p2_perusahaan: "PT. Media Telekomunikasi Mandiri",
+            p2_nama: "Adril Hamnur",
+            p2_jabatan: "Engineer",
+            p2_hp: "082159902141",
+            daftar_barang: JSON.stringify([
+              { no: 1, jenis: "Wiremanagement Cable", jumlah: "2", satuan: "Unit", keterangan: "Di pasang di Lantai 8 BF11" }
+            ]),
+            ttd1_nama: "Adril Hamnur",
+            ttd2_nama: "Ade Yulianto",
+            ttd3_nama: "Septian",
+            ttd4_nama: "Sahlan / Prido",
+            ttd5_nama: "Diki Chrismanto",
+            sig1: "", sig2: "", sig3: "", sig4: "", sig5: "",
+            foto1: "", foto2: "", foto3: ""
+          }
+        ];
+
+        // Pemetaan Bulan ke Angka Romawi
+        function getRomawi(bulan) {
+            const romawi = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+            return romawi[bulan];
+        }
+
+        // Fungsi Mengubah Jenis Dokumen
+        function setDocType(type) {
+            docType = type;
+            const btnBamb = document.getElementById('btn-type-bamb');
+            const btnBakb = document.getElementById('btn-type-bakb');
+            
+            if (type === 'BAMB') {
+                btnBamb.className = "py-2.5 text-center rounded-lg bg-red-600 text-white shadow-sm flex items-center justify-center transition-all duration-150";
+                btnBakb.className = "py-2.5 text-center rounded-lg text-slate-600 hover:text-slate-800 flex items-center justify-center transition-all duration-150";
+                document.getElementById('in-sig1-label').innerText = "1. Pembawa Barang Mitra";
+            } else {
+                btnBamb.className = "py-2.5 text-center rounded-lg text-slate-600 hover:text-slate-800 flex items-center justify-center transition-all duration-150";
+                btnBakb.className = "py-2.5 text-center rounded-lg bg-red-600 text-white shadow-sm flex items-center justify-center transition-all duration-150";
+                document.getElementById('in-sig1-label').innerText = "1. Penerima Barang Mitra";
+            }
+            
+            initNomorBA();
+            showToast(`Jenis Dokumen diubah ke Berita Acara ${type === 'BAMB' ? 'Masuk' : 'Keluar'} Barang`, 'success');
+        }
+
+        // Tetapkan waktu online automatik hari ini
+        function initAutoDateTime() {
+            const date = new Date();
+            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            
+            const dayName = days[date.getDay()];
+            const dateStr = `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('in-tanggal').value = `${dayName}, ${dateStr}`;
+            document.getElementById('in-pukul').value = `${hours}.${minutes} WIB`;
+        }
+
+        // Generate Nomor BA berturut otomatis
+        function initNomorBA() {
+            const counter = localStorage.getItem('simba_counter_val') || "01";
+            const date = new Date();
+            const bulanRomawi = getRomawi(date.getMonth());
+            const tahun = date.getFullYear();
+            
+            const nomorFormatted = `${counter}/TTCBSD/${docType}/${bulanRomawi}/${tahun}`;
+            document.getElementById('in-nomor-ba').value = nomorFormatted;
+            
+            updatePreview();
+        }
+
+        // Tingkatkan urutan pembilang no BA
+        function incrementBA() {
+            let current = parseInt(localStorage.getItem('simba_counter_val') || "1");
+            current += 1;
+            const padded = current < 10 ? '0' + current : current;
+            localStorage.setItem('simba_counter_val', padded);
+            initNomorBA();
+            showToast("Nomor BA berhasil di-increment!", "success");
+        }
+
+        // Tukar Tab Borang
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-red-600', 'shadow-sm', 'text-emerald-700');
+                btn.classList.add('text-slate-600', 'hover:text-slate-800');
+            });
+
+            document.getElementById(tabId).classList.add('active');
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            activeBtn.classList.remove('text-slate-600', 'hover:text-slate-800');
+            
+            if (tabId === 'tab-appsheet') {
+                activeBtn.classList.add('bg-white', 'text-emerald-700', 'shadow-sm');
+            } else if (tabId === 'tab-cari') {
+                activeBtn.classList.add('bg-white', 'text-red-600', 'shadow-sm');
+                if (cachedDocuments.length === 0) {
+                    fetchDocumentsFromSheet(true); // silent load awal
+                }
+            } else {
+                activeBtn.classList.add('bg-white', 'text-red-600', 'shadow-sm');
+            }
+        }
+
+        // Tampilkan Notifikasi Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            toastMsg.innerText = message;
+            if (type === 'success') {
+                toastIcon.innerHTML = `<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            } else if (type === 'info') {
+                toastIcon.innerHTML = `<svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            } else {
+                toastIcon.innerHTML = `<svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Fungsi Kompresi Gambar
+        function compressAndLoadImage(file, callback, maxWidth = 800, maxHeight = 800) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width *= maxHeight / height;
+                            height = maxHeight;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    callback(dataUrl);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Tambah baris input barang baru
+        let barangRowCounter = 1;
+        function addBarangRow() {
+            barangRowCounter++;
+            const container = document.getElementById('barang-inputs-container');
+            const rowHTML = `
+                <div class="barang-row bg-slate-50 p-3 rounded-lg border border-slate-200 relative" data-row-id="${barangRowCounter}">
+                    <div class="absolute top-2 right-2 text-slate-400 font-bold text-xs">#${barangRowCounter}</div>
+                    <button onclick="removeBarangRow(${barangRowCounter})" class="absolute top-2 right-8 text-rose-500 hover:text-rose-700 transition">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                    <div class="space-y-2 mt-1">
+                        <div>
+                            <label class="block text-[10px] font-semibold uppercase text-slate-500">Jenis Barang</label>
+                            <input type="text" oninput="updatePreview()" class="row-jenis-barang w-full text-xs px-2 py-1.5 border rounded">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase text-slate-500">Jumlah</label>
+                                <input type="number" oninput="updatePreview()" class="row-jumlah w-full text-xs px-2 py-1.5 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold uppercase text-slate-500">Satuan</label>
+                                <input type="text" value="Unit" oninput="updatePreview()" class="row-satuan w-full text-xs px-2 py-1.5 border rounded">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold uppercase text-slate-500">Keterangan</label>
+                            <input type="text" oninput="updatePreview()" class="row-keterangan w-full text-xs px-2 py-1.5 border rounded">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', rowHTML);
+            lucide.createIcons();
+            updatePreview();
+        }
+
+        function removeBarangRow(rowId) {
+            const row = document.querySelector(`.barang-row[data-row-id="${rowId}"]`);
+            if (row) {
+                row.remove();
+                updatePreview();
+            }
+        }
+
+        // Kontrol Modal Tanda Tangan
+        function openSignatureModal(key, title) {
+            activeSignatureKey = key;
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('signature-modal').classList.remove('hidden');
+            
+            const rect = sigCanvas.parentElement.getBoundingClientRect();
+            sigCanvas.width = rect.width;
+            sigCanvas.height = 192;
+            
+            clearSignatureCanvas();
+            if (signatures[key]) {
+                const img = new Image();
+                img.onload = () => sigCtx.drawImage(img, 0, 0);
+                img.src = signatures[key];
+            }
+        }
+
+        // Fungsi Kokoh Mendapatkan Base URL (Menghindari bugs sandbox/port/duplikasi protocol)
+        function getBaseUrl() {
+            const customDomain = document.getElementById('in-custom-domain')?.value.trim() || localStorage.getItem('simba_custom_domain') || '';
+            if (customDomain) {
+                let cleanDomain = customDomain;
+                if (cleanDomain.endsWith('/')) {
+                    cleanDomain = cleanDomain.slice(0, -1);
+                }
+                if (!/^https?:\/\//i.test(cleanDomain)) {
+                    cleanDomain = 'https://' + cleanDomain;
+                }
+                return cleanDomain;
+            }
+            // Fallback: mengembalikan URL browser saat ini tanpa parameter pencarian/hash
+            return window.location.href.split('?')[0].split('#')[0];
+        }
+
+        // Penanganan Modal Bagikan Link Preview Berkas
+        function sharePreviewLink(baNumber) {
+            const baseUrl = getBaseUrl();
+            const shareUrl = `${baseUrl}?view=1&ba=${encodeURIComponent(baNumber)}`;
+            
+            const tempInput = document.createElement("textarea");
+            tempInput.value = shareUrl;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            tempInput.setSelectionRange(0, 99999); // Mendukung perangkat seluler
+            
+            try {
+                const successful = document.execCommand("copy");
+                if (successful) {
+                    showToast("Link pratinjau tersalin ke clipboard!", "success");
+                    showShareModal(baNumber, shareUrl);
+                } else {
+                    throw new Error("Gagal menyalin otomatis");
+                }
+            } catch (err) {
+                console.warn("Clipboard API diblokir, membuka dialog manual.", err);
+                showShareModal(baNumber, shareUrl);
+            } finally {
+                document.body.removeChild(tempInput);
+            }
+        }
+
+        function showShareModal(baNumber, url) {
+            document.getElementById('share-modal-ba-num').innerText = baNumber;
+            document.getElementById('share-modal-link-input').value = url;
+            document.getElementById('share-modal-test-btn').href = url;
+            document.getElementById('share-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function copyShareModalLink() {
+            const input = document.getElementById('share-modal-link-input');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                showToast("Tautan pratinjau disalin!", "success");
+            } catch (e) {
+                showToast("Gagal menyalin otomatis, silakan salin manual.", "error");
+            }
+        }
+
+        // Simpan & Load Domain Kustom dari Penyimpanan Lokal
+        function saveCustomDomain() {
+            const domain = document.getElementById('in-custom-domain').value.trim();
+            localStorage.setItem('simba_custom_domain', domain);
+        }
+
+        function loadCustomDomain() {
+            const domain = localStorage.getItem('simba_custom_domain') || '';
+            const el = document.getElementById('in-custom-domain');
+            if (el) {
+                el.value = domain;
+            }
+        }
+
+        // Fungsi khusus untuk kembali ke aplikasi SIMBA lengkap dari mode pratinjau saja
+        function openFullApp() {
+            window.location.href = window.location.origin + window.location.pathname;
+        }
+
+        function closeSignatureModal() {
+            document.getElementById('signature-modal').classList.add('hidden');
+        }
+
+        // Mengatur posisi layout tanda tangan
+        function setSigLayout(layout) {
+            signatureLayout = layout;
+            const btnInline = document.getElementById('btn-layout-inline');
+            const btnBottom = document.getElementById('btn-layout-bottom');
+            const sigContainer = document.getElementById('sig-container-block');
+
+            if (layout === 'inline') {
+                btnInline.className = "py-1.5 px-3 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition";
+                btnBottom.className = "py-1.5 px-3 rounded-lg text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition";
+                sigContainer.classList.remove('mt-auto');
+                sigContainer.classList.add('mt-4');
+            } else {
+                btnInline.className = "py-1.5 px-3 rounded-lg text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition";
+                btnBottom.className = "py-1.5 px-3 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition";
+                sigContainer.classList.remove('mt-4');
+                sigContainer.classList.add('mt-auto');
+            }
+            showToast(`Posisi tanda tangan: ${layout === 'inline' ? 'Rapat dengan Tabel' : 'Di Bawah Halaman'}`);
+        }
+
+        function clearSignatureCanvas() {
+            sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+        }
+
+        function saveSignatureCanvas() {
+            const blank = document.createElement('canvas');
+            blank.width = sigCanvas.width;
+            blank.height = sigCanvas.height;
+            if (sigCanvas.toDataURL() === blank.toDataURL()) {
+                signatures[activeSignatureKey] = null;
+            } else {
+                signatures[activeSignatureKey] = sigCanvas.toDataURL('image/png');
+            }
+            updatePreview();
+            closeSignatureModal();
+            showToast('Tanda tangan berhasil diterapkan!');
+        }
+
+        // Muat Naik Logo Kustom dengan Kompresi Otomatis
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast('Memproses logo...', 'info');
+            compressAndLoadImage(file, function(compressedUrl) {
+                customLogo = compressedUrl;
+                updatePreview();
+                showToast('Logo kustom berhasil dimuat.');
+            }, 500, 500);
+        }
+
+        function removeLogo() {
+            customLogo = null;
+            document.getElementById('logo-upload').value = '';
+            updatePreview();
+            showToast('Kembali ke logo default.', 'info');
+        }
+
+        // Muat naik fail foto barang
+        function handleFotoUpload(event, index) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast(`Memproses foto ${index+1}...`, 'info');
+            compressAndLoadImage(file, function(compressedUrl) {
+                photos[index] = compressedUrl;
+                document.getElementById(`slot-preview-${index}`).src = compressedUrl;
+                document.getElementById(`slot-preview-${index}`).classList.remove('hidden');
+                document.getElementById(`slot-placeholder-${index}`).classList.add('hidden');
+                document.getElementById(`slot-remove-${index}`).classList.remove('hidden');
+                updatePreview();
+                showToast(`Foto ${index+1} berhasil ditambahkan!`);
+            }, 800, 800);
+        }
+
+        function removeFoto(index) {
+            photos[index] = null;
+            document.getElementById(`foto-upload-${index}`).value = '';
+            document.getElementById(`slot-preview-${index}`).classList.add('hidden');
+            document.getElementById(`slot-placeholder-${index}`).classList.remove('hidden');
+            document.getElementById(`slot-remove-${index}`).classList.add('hidden');
+            updatePreview();
+            showToast(`Foto ${index+1} berhasil dihapus.`, 'info');
+        }
+
+        // Render Lembaran Preview A4
+        function updatePreview() {
+            const nomorBA = document.getElementById('in-nomor-ba').value;
+            
+            if (docType === 'BAMB') {
+                document.getElementById('p-title-ba').innerText = "BERITA ACARA MASUK BARANG";
+                document.getElementById('p-statement-action').innerText = "MASUK BARANG";
+                document.getElementById('p-sig1-label').innerHTML = "Pembawa Barang<br>Mitra";
+            } else {
+                document.getElementById('p-title-ba').innerText = "BERITA ACARA KELUAR BARANG";
+                document.getElementById('p-statement-action').innerText = "KELUAR BARANG";
+                document.getElementById('p-sig1-label').innerHTML = "Penerima Barang<br>Mitra";
+            }
+
+            document.getElementById('p-nomor-ba').innerText = nomorBA;
+            document.getElementById('p-pekerjaan').innerText = document.getElementById('in-pekerjaan').value;
+            document.getElementById('p-lokasi').innerText = document.getElementById('in-lokasi').value;
+            document.getElementById('p-lantai').innerText = document.getElementById('in-lantai').value;
+            document.getElementById('p-tanggal').innerText = document.getElementById('in-tanggal').value;
+            document.getElementById('p-pukul').innerText = document.getElementById('in-pukul').value;
+            document.getElementById('p-no-kontrak').innerText = document.getElementById('in-no-kontrak').value;
+            document.getElementById('p-nama-project').innerText = document.getElementById('in-nama-project').value;
+
+            // Update Pihak
+            document.getElementById('p-p1-nama').innerText = document.getElementById('in-p1-nama').value;
+            document.getElementById('p-p1-dept').innerText = document.getElementById('in-p1-dept').value;
+            document.getElementById('p-p1-hp').innerText = document.getElementById('in-p1-hp').value;
+            document.getElementById('p-p2-nama').innerText = document.getElementById('in-p2-nama').value;
+            document.getElementById('p-p2-jabatan').innerText = document.getElementById('in-p2-jabatan').value;
+            document.getElementById('p-p2-hp').innerText = document.getElementById('in-p2-hp').value;
+            document.getElementById('p-p2-perusahaan').innerText = document.getElementById('in-p2-perusahaan').value;
+
+            // Nama penandatangan di bagian bawah
+            document.getElementById('p-sig1-nama').innerText = document.getElementById('in-ttd1-nama').value;
+            document.getElementById('p-sig2-nama').innerText = document.getElementById('in-ttd2-nama').value;
+            document.getElementById('p-sig3-nama').innerText = document.getElementById('in-ttd3-nama').value;
+            document.getElementById('p-sig4-nama').innerText = document.getElementById('in-ttd4-nama').value;
+            document.getElementById('p-sig5-nama').innerText = document.getElementById('in-ttd5-nama').value;
+
+            // Generasikan QR Code
+            try {
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(nomorBA)}`;
+                document.getElementById('prev-qrcode-img').src = qrUrl;
+                document.getElementById('p-qrcode-ba-num').innerText = nomorBA;
+            } catch (error) {
+                console.error("Gagal merender QR Code:", error);
+            }
+
+            // Logik Tukar Logo
+            const defaultLogo = document.getElementById('default-logo-container');
+            const customLogoDiv = document.getElementById('custom-logo-container');
+            const customLogoImg = document.getElementById('p-custom-logo');
+            const removeLogoBtn = document.getElementById('btn-remove-logo');
+
+            if (customLogo) {
+                defaultLogo.classList.add('hidden');
+                customLogoDiv.classList.remove('hidden');
+                customLogoImg.src = customLogo;
+                removeLogoBtn.classList.remove('hidden');
+            } else {
+                defaultLogo.classList.remove('hidden');
+                customLogoDiv.classList.add('hidden');
+                removeLogoBtn.classList.add('hidden');
+            }
+
+            // Tanda Tangan lakaran di kanvas pratinjau
+            Object.keys(signatures).forEach(key => {
+                const imgEl = document.getElementById(`img-${key}`);
+                const lineEl = document.getElementById(`line-${key}`);
+                const statusEl = document.getElementById(`preview-${key}-status`);
+                
+                if (signatures[key]) {
+                    if (imgEl) {
+                        imgEl.src = signatures[key];
+                        imgEl.classList.remove('hidden');
+                    }
+                    if (lineEl) lineEl.classList.add('hidden');
+                    if (statusEl) statusEl.innerHTML = `<span class="text-emerald-600 font-bold flex items-center justify-center"><i data-lucide="check" class="w-3 h-3 mr-1"></i> Tersimpan</span>`;
+                } else {
+                    if (imgEl) imgEl.classList.add('hidden');
+                    if (lineEl) lineEl.classList.remove('hidden');
+                    if (statusEl) statusEl.innerHTML = "Belum Ada Tanda Tangan";
+                }
+            });
+
+            // Sinkronisasi baris item barang ke tabel preview
+            const tableBody = document.getElementById('preview-table-body');
+            tableBody.innerHTML = '';
+            const rows = document.querySelectorAll('.barang-row');
+            
+            rows.forEach((row, i) => {
+                const jenis = row.querySelector('.row-jenis-barang').value || '-';
+                const jumlah = row.querySelector('.row-jumlah').value || '0';
+                const satuan = row.querySelector('.row-satuan').value || 'Unit';
+                const keterangan = row.querySelector('.row-keterangan').value || '-';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="border border-slate-800 py-1 px-2">${i + 1}</td>
+                    <td class="border border-slate-800 py-1 px-2 text-left">${jenis}</td>
+                    <td class="border border-slate-800 py-1 px-2">${jumlah}</td>
+                    <td class="border border-slate-800 py-1 px-2">${satuan}</td>
+                    <td class="border border-slate-800 py-1 px-2 text-left">${keterangan}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Grid susunan lampiran gambar
+            const photoGrid = document.getElementById('preview-photos-grid');
+            const placeholder = document.getElementById('p-barang-foto-placeholder');
+            const activePhotos = photos.filter(p => p !== null);
+
+            if (activePhotos.length === 0) {
+                photoGrid.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            } else {
+                photoGrid.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                photoGrid.innerHTML = '';
+                
+                if (activePhotos.length === 1) {
+                    photoGrid.className = "grid grid-cols-1 gap-4 w-full h-full items-center justify-center";
+                    activePhotos.forEach(src => {
+                        const img = document.createElement('img');
+                        img.src = src;
+                        img.className = "w-full h-full max-h-[150mm] object-contain border border-slate-300 rounded mx-auto shadow-sm bg-white";
+                        photoGrid.appendChild(img);
+                    });
+                } else if (activePhotos.length === 2) {
+                    photoGrid.className = "grid grid-cols-2 gap-4 w-full h-full items-center justify-center";
+                    activePhotos.forEach(src => {
+                        const img = document.createElement('img');
+                        img.src = src;
+                        img.className = "w-full h-full max-h-[140mm] object-contain border border-slate-300 rounded mx-auto shadow-sm bg-white";
+                        photoGrid.appendChild(img);
+                    });
+                } else if (activePhotos.length === 3) {
+                    photoGrid.className = "grid grid-cols-2 grid-rows-2 gap-4 w-full h-full items-center justify-center";
+                    activePhotos.forEach((src, idx) => {
+                        const img = document.createElement('img');
+                        img.src = src;
+                        if (idx === 0) {
+                            img.className = "col-span-2 w-full h-full max-h-[80mm] object-contain border border-slate-300 rounded mx-auto shadow-sm bg-white";
+                        } else {
+                            img.className = "w-full h-full max-h-[65mm] object-contain border border-slate-300 rounded mx-auto shadow-sm bg-white";
+                        }
+                        photoGrid.appendChild(img);
+                    });
+                }
+            }
+            lucide.createIcons();
+        }
+
+        // Muat Turun Dokumen Format PDF
+        function downloadPDF() {
+            const nomorBA = document.getElementById('in-nomor-ba').value;
+            showToast("Memproses cetakan PDF...", "info");
+            
+            const element = document.getElementById('pdf-content');
+            element.classList.add('is-pdf');
+            
+            const prefixFilename = docType === 'BAMB' ? 'BA_Masuk_Barang' : 'BA_Keluar_Barang';
+            const sanitizedFilename = `${prefixFilename}_${nomorBA.replace(/[\/\\?%*:|"<>\s]/g, '_')}.pdf`;
+
+            const opt = {
+                margin:       0,
+                filename:     sanitizedFilename,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { 
+                    scale: 2.0,            
+                    useCORS: true,         
+                    letterRendering: true, 
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    scrollY: 0 // Menambahkan ini agar render mulai dari posisi atas persis
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['css', 'legacy'] }
+            };
+
+            // Tambahkan sedikit delay agar CSS .is-pdf teraplikasikan sebelum dirender
+            setTimeout(() => {
+                html2pdf().from(element).set(opt).save().then(() => {
+                    showToast("PDF Berhasil Diunduh!", "success");
+                    element.classList.remove('is-pdf');
+                }).catch(err => {
+                    console.error(err);
+                    showToast("Gagal merender PDF.", "error");
+                    element.classList.remove('is-pdf');
+                });
+            }, 150);
+        }
+
+        // Helper fetch otomatis dengan Exponential Backoff (Maksimum 5 kali coba ulang)
+        async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok && response.status !== 0) {
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
+                return response;
+            } catch (error) {
+                if (retries <= 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return fetchWithRetry(url, options, retries - 1, delay * 2);
+            }
+        }
+
+        // Integrasi Sinkronisasi Otomatis ke Google Sheets
+        async function saveToAppSheet() {
+            const webAppUrl = "https://script.google.com/macros/s/AKfycbwOfmOGdiouHZ-DfM2wDCT2cLnJLDMqGX_Dyo04FYA3-JkyYuTK58CMxfXaQrQGnxlhTg/exec";
+            showToast("Menghubungkan ke Google Sheets...", "info");
+            
+            const syncIndicator = document.getElementById('cloud-sync-indicator');
+            const syncStatus = document.getElementById('cloud-sync-status');
+            const docIdInput = document.getElementById('appsheet-doc-id');
+            
+            syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
+            syncStatus.innerText = "Mengirim...";
+
+            const listBarang = [];
+            const rows = document.querySelectorAll('.barang-row');
+            rows.forEach((row, i) => {
+                listBarang.push({
+                    no: i + 1,
+                    jenis: row.querySelector('.row-jenis-barang').value || '-',
+                    jumlah: row.querySelector('.row-jumlah').value || '0',
+                    satuan: row.querySelector('.row-satuan').value || 'Unit',
+                    keterangan: row.querySelector('.row-keterangan').value || '-'
+                });
+            });
+
+            const nomorBA = document.getElementById('in-nomor-ba').value;
+
+            const payload = {
+                nomor_ba: nomorBA,
+                jenis_ba: docType,
+                pekerjaan: document.getElementById('in-pekerjaan').value,
+                lokasi: document.getElementById('in-lokasi').value,
+                lantai: document.getElementById('in-lantai').value,
+                tanggal: document.getElementById('in-tanggal').value,
+                pukul: document.getElementById('in-pukul').value,
+                no_kontrak: document.getElementById('in-no-kontrak').value,
+                nama_project: document.getElementById('in-nama-project').value,
+                p1_nama: document.getElementById('in-p1-nama').value,
+                p1_dept: document.getElementById('in-p1-dept').value,
+                p1_hp: document.getElementById('in-p1-hp').value,
+                p2_perusahaan: document.getElementById('in-p2-perusahaan').value,
+                p2_nama: document.getElementById('in-p2-nama').value,
+                p2_jabatan: document.getElementById('in-p2-jabatan').value,
+                p2_hp: document.getElementById('in-p2-hp').value,
+                daftar_barang: JSON.stringify(listBarang),
+                ttd1_nama: document.getElementById('in-ttd1-nama').value,
+                ttd2_nama: document.getElementById('in-ttd2-nama').value,
+                ttd3_nama: document.getElementById('in-ttd3-nama').value,
+                ttd4_nama: document.getElementById('in-ttd4-nama').value,
+                ttd5_nama: document.getElementById('in-ttd5-nama').value,
+                sig1: signatures.sig1 || "",
+                sig2: signatures.sig2 || "",
+                sig3: signatures.sig3 || "",
+                sig4: signatures.sig4 || "",
+                sig5: signatures.sig5 || "",
+                foto1: photos[0] || "",
+                foto2: photos[1] || "",
+                foto3: photos[2] || "",
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                await fetchWithRetry(webAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                syncStatus.innerText = "Tersinkronisasi!";
+                docIdInput.value = nomorBA;
+                showToast(`Sukses! Berita Acara (${docType}) berhasil disimpan ke Google Sheet.`, "success");
+            } catch (error) {
+                console.error("Gagal menyinkronkan ke Google Sheets:", error);
+                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                syncStatus.innerText = "Gagal Sinkronisasi";
+                showToast("Gagal menyimpan ke Google Sheet. Silakan coba beberapa saat lagi.", "error");
+            }
+        }
+
+        // Reset Formulir
+        function triggerResetConfirm() {
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function executeResetAll() {
+            closeConfirmModal();
+            localStorage.removeItem('simba_counter_val');
+            
+            signatures = { sig1: null, sig2: null, sig3: null, sig4: null, sig5: null };
+            customLogo = null;
+            photos = [null, null, null];
+            
+            document.getElementById('logo-upload').value = '';
+            for (let i = 0; i < 3; i++) {
+                document.getElementById(`foto-upload-${i}`).value = '';
+                document.getElementById(`slot-preview-${i}`).classList.add('hidden');
+                document.getElementById(`slot-placeholder-${i}`).classList.remove('hidden');
+                document.getElementById(`slot-remove-${i}`).classList.add('hidden');
+            }
+
+            document.getElementById('cloud-sync-status').innerText = "Belum disinkronkan";
+            document.getElementById('cloud-sync-indicator').className = "w-2.5 h-2.5 rounded-full bg-slate-400";
+            document.getElementById('appsheet-doc-id').value = "BELUM DISIMPAN";
+
+            setSigLayout('inline');
+            setDocType('BAMB');
+
+            initNomorBA();
+            initAutoDateTime();
+            updatePreview();
+            showToast("Formulir berhasil direset.", "info");
+        }
+
+        // MEMPERBAIKI FUNGSI FETCH / BACA DATA (DOGET) DARI GOOGLE SHEET
+        async function fetchDocumentsFromSheet(silent = false) {
+            const webAppUrl = "https://script.google.com/macros/s/AKfycbwOfmOGdiouHZ-DfM2wDCT2cLnJLDMqGX_Dyo04FYA3-JkyYuTK58CMxfXaQrQGnxlhTg/exec";
+            const url = `${webAppUrl}?action=read`;
+            
+            const statusEl = document.getElementById('search-status');
+            const resultsList = document.getElementById('search-results-list');
+            
+            if (!silent) {
+                statusEl.innerHTML = `<span class="text-blue-600 font-semibold flex items-center"><i data-lucide="loader" class="w-4 h-4 mr-2 animate-spin flex-shrink-0"></i> Menghubungkan ke Google Sheet...</span>`;
+                resultsList.innerHTML = `
+                    <div class="text-center p-12 text-slate-500 space-y-3">
+                        <div class="animate-spin inline-block w-8 h-8 border-[3px] border-current border-t-transparent text-red-600 rounded-full" role="status" aria-label="loading"></div>
+                        <p class="text-xs font-semibold">Sedang mengunduh basis data dari Google Sheets...</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 Detik Timeout
+                
+                const response = await fetch(url, { 
+                    method: 'GET',
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error("Gagal terhubung dengan server Google Apps Script.");
+                }
+                
+                const data = await response.json();
+                let docsArray = [];
+                
+                // PARSING ROBUST: Sesuai format { status: "success", data: [...] }
+                if (data && data.status === "success" && Array.isArray(data.data)) {
+                    docsArray = data.data;
+                } else if (Array.isArray(data)) {
+                    docsArray = data;
+                } else if (data && Array.isArray(data.records)) {
+                    docsArray = data.records;
+                } else if (data && typeof data === 'object') {
+                    if (data.data && Array.isArray(data.data)) {
+                        docsArray = data.data;
+                    } else {
+                        docsArray = Object.values(data).find(val => Array.isArray(val)) || [];
+                    }
+                }
+
+                // Filter dokumen yang memiliki Nomor BA valid saja
+                docsArray = docsArray.filter(doc => doc && (doc.nomor_ba || doc["Nomor BA"]));
+
+                if (docsArray.length > 0) {
+                    cachedDocuments = docsArray;
+                    statusEl.innerHTML = `<span class="text-emerald-600 font-semibold flex items-center"><i data-lucide="check-circle" class="w-4 h-4 mr-2 flex-shrink-0"></i> Sukses memuat ${docsArray.length} dokumen dari Cloud.</span>`;
+                    performSearch();
+                } else {
+                    statusEl.innerHTML = `<span class="text-amber-600 font-semibold flex items-center"><i data-lucide="alert-circle" class="w-4 h-4 mr-2 flex-shrink-0"></i> Koneksi sukses, namun database kosong.</span>`;
+                    setupDemoSearch(true);
+                }
+            } catch (error) {
+                console.warn("Koneksi gagal/CORS. Beralih ke demonstrasi simulasi offline:", error);
+                if (!silent) {
+                    statusEl.innerHTML = `
+                        <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-[11px] text-slate-700 space-y-1.5 text-left">
+                            <p class="font-bold text-red-600">Koneksi Real-time Mengalami Kendala (CORS / Belum Di-deploy)</p>
+                            <p class="text-[10px]">Pastikan Apps Script Anda di-deploy ulang sebagai <b>Web App</b> baru dengan Akses: <b>Anyone</b> dan memiliki fungsi <code>doGet()</code> terupdate.</p>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="setupDemoSearch(false)" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] transition flex items-center">
+                                    <i data-lucide="play" class="w-3 h-3 mr-1"></i> Gunakan Simulasi Data
+                                </button>
+                                <button onclick="fetchDocumentsFromSheet()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-[10px] transition">
+                                    Coba Lagi
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    cachedDocuments = [...mockDocs];
+                    performSearch();
+                }
+            }
+            lucide.createIcons();
+        }
+
+        // Fungsi Memuat Dokumen Share Link Secara Mandiri (Preview Saja)
+        async function loadSharedDocument(baNumber) {
+            const webAppUrl = "https://script.google.com/macros/s/AKfycbwOfmOGdiouHZ-DfM2wDCT2cLnJLDMqGX_Dyo04FYA3-JkyYuTK58CMxfXaQrQGnxlhTg/exec";
+            const url = `${webAppUrl}?action=read`;
+            const loaderSub = document.getElementById('preview-loader-subtext');
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 Detik Timeout
+                
+                const response = await fetch(url, { 
+                    method: 'GET',
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) throw new Error("Gagal mengambil respon dari awan.");
+                
+                const data = await response.json();
+                let docsArray = [];
+                
+                if (data && data.status === "success" && Array.isArray(data.data)) {
+                    docsArray = data.data;
+                } else if (Array.isArray(data)) {
+                    docsArray = data;
+                } else if (data && Array.isArray(data.records)) {
+                    docsArray = data.records;
+                } else if (data && typeof data === 'object') {
+                    if (data.data && Array.isArray(data.data)) {
+                        docsArray = data.data;
+                    } else {
+                        docsArray = Object.values(data).find(val => Array.isArray(val)) || [];
+                    }
+                }
+
+                docsArray = docsArray.filter(doc => doc && (doc.nomor_ba || doc["Nomor BA"]));
+                
+                if (docsArray.length > 0) {
+                    cachedDocuments = docsArray;
+                    const found = docsArray.find(d => (d.nomor_ba === baNumber || d["Nomor BA"] === baNumber));
+                    if (found) {
+                        loadDocumentData(found.nomor_ba || found["Nomor BA"]);
+                        document.getElementById('preview-loader').classList.add('hidden');
+                    } else {
+                        throw new Error("Dokumen tidak ditemukan di cloud.");
+                    }
+                } else {
+                    throw new Error("Tabel cloud kosong.");
+                }
+            } catch (error) {
+                console.warn("Koneksi cloud gagal. Mencari di database simulasi...", error);
+                
+                // Cari di mockDocs
+                const foundLocal = mockDocs.find(d => d.nomor_ba === baNumber);
+                if (foundLocal) {
+                    cachedDocuments = [...mockDocs];
+                    loadDocumentData(baNumber);
+                    document.getElementById('preview-loader').classList.add('hidden');
+                    showToast("Dokumen simulasi dimuat (Koneksi Cloud Offline).", "info");
+                } else {
+                    // Beritahu pengguna kegagalan pencarian berkas
+                    loaderSub.innerHTML = `
+                        <span class="text-rose-400 font-bold block mb-2">Gagal Memuat Dokumen!</span>
+                        <span class="text-xs text-slate-300 block mb-4 leading-relaxed">
+                            Dokumen dengan nomor BA: <b>${baNumber}</b> tidak ditemukan atau server Google Sheets mengalami masalah koneksi.
+                        </span>
+                        <button onclick="openFullApp()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-md">
+                            Kembali ke Aplikasi SIMBA
+                        </button>
+                    `;
+                    document.querySelector('#preview-loader .animate-spin').classList.add('hidden');
+                }
+            }
+        }
+
+        // Memuat database demo offline
+        function setupDemoSearch(isCloudEmpty = false) {
+            cachedDocuments = [...mockDocs];
+            const statusEl = document.getElementById('search-status');
+            
+            if (isCloudEmpty) {
+                statusEl.innerHTML = `<span class="text-indigo-600 font-semibold flex items-center"><i data-lucide="info" class="w-4 h-4 mr-2 flex-shrink-0"></i> Menggunakan Data Riwayat Simulasi (Sheet Kosong)</span>`;
+            } else {
+                statusEl.innerHTML = `<span class="text-indigo-600 font-semibold flex items-center"><i data-lucide="info" class="w-4 h-4 mr-2 flex-shrink-0"></i> Mode Simulasi Berhasil Diaktifkan!</span>`;
+            }
+            performSearch();
+        }
+
+        // Melakukan filter pencarian dinamis (On-input)
+        function performSearch() {
+            const query = document.getElementById('search-query').value.toLowerCase().trim();
+            
+            if (query.length > 0 && cachedDocuments.length === 0) {
+                fetchDocumentsFromSheet(true);
+                return;
+            }
+
+            const filtered = cachedDocuments.filter(doc => {
+                const nomor = (doc.nomor_ba || doc["Nomor BA"] || '').toLowerCase();
+                const pekerjaan = (doc.pekerjaan || doc["Pekerjaan"] || '').toLowerCase();
+                const namaProject = (doc.nama_project || doc["Nama Project"] || '').toLowerCase();
+                const p1_nama = (doc.p1_nama || doc["P1 Nama"] || '').toLowerCase();
+                const p2_nama = (doc.p2_nama || doc["P2 Nama"] || '').toLowerCase();
+                const p2_perusahaan = (doc.p2_perusahaan || doc["P2 Perusahaan"] || '').toLowerCase();
+                const ttd1 = (doc.ttd1_nama || doc["TTD1 Nama"] || '').toLowerCase();
+                
+                return nomor.includes(query) || 
+                       pekerjaan.includes(query) || 
+                       namaProject.includes(query) || 
+                       p1_nama.includes(query) || 
+                       p2_nama.includes(query) || 
+                       ttd1.includes(query) ||
+                       p2_perusahaan.includes(query);
+            });
+            renderSearchResults(filtered);
+        }
+
+        // Render Card Hasil Pencarian ke HTML
+        function renderSearchResults(docs) {
+            const list = document.getElementById('search-results-list');
+            const query = document.getElementById('search-query').value.trim();
+            list.innerHTML = '';
+            
+            if (docs.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center p-8 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 text-amber-600">
+                            <i data-lucide="alert-circle" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h5 class="font-bold text-slate-800 text-sm">Dokumen tidak ditemukan</h5>
+                            <p class="text-xs text-slate-500 mt-1">Tidak ada data Berita Acara yang cocok dengan kata kunci "${query}" di Google Sheets.</p>
+                        </div>
+                        <button onclick="fetchDocumentsFromSheet()" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-sm inline-flex items-center transition">
+                            <i data-lucide="refresh-cw" class="w-3 h-3 mr-1.5"></i> Coba Sinkronisasi Ulang
+                        </button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            docs.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 p-3.5 rounded-xl hover:border-red-400 transition hover:shadow-sm space-y-2.5 text-left animate-fadeIn";
+                
+                const rawNoBa = doc.nomor_ba || doc["Nomor BA"] || "BA/ERROR";
+                const rawJenisBa = doc.jenis_ba || doc["Jenis BA"] || "BAMB";
+                const badgeColor = rawJenisBa === 'BAMB' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200';
+                const badgeText = rawJenisBa === 'BAMB' ? 'Masuk' : 'Keluar';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="space-y-0.5 max-w-[55%]">
+                            <span class="inline-block px-2 py-0.5 text-[9px] font-bold rounded border ${badgeColor}">${badgeText}</span>
+                            <h4 class="font-bold text-slate-800 text-xs font-mono leading-tight truncate" title="${rawNoBa}">${rawNoBa}</h4>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <!-- Tombol Bagikan Link Preview Saja -->
+                            <button onclick="sharePreviewLink('${rawNoBa}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[10.5px] p-2 rounded-lg flex items-center justify-center transition shadow-sm" title="Bagikan Link Live Preview">
+                                <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <!-- Tombol Muat BA untuk Mengedit -->
+                            <button onclick="loadDocumentData('${rawNoBa}')" class="bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] px-2.5 py-2 rounded-lg flex items-center transition shadow-sm">
+                                <i data-lucide="file-symlink" class="w-3.5 h-3.5 mr-1 flex-shrink-0"></i> Muat BA
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-[10.5px] text-slate-600 space-y-1 border-t pt-2">
+                        <div class="flex justify-between gap-4"><span class="font-semibold text-slate-500 flex-shrink-0">Pekerjaan:</span> <span class="text-right truncate font-medium text-slate-800">${doc.pekerjaan || doc["Pekerjaan"] || '-'}</span></div>
+                        <div class="flex justify-between gap-4"><span class="font-semibold text-slate-500 flex-shrink-0">Mitra:</span> <span class="text-right truncate font-medium text-slate-800">${doc.p2_perusahaan || doc["P2 Perusahaan"] || '-'}</span></div>
+                        <div class="flex justify-between gap-4"><span class="font-semibold text-slate-500 flex-shrink-0">PIC Mitra:</span> <span class="text-right font-bold text-slate-800">${doc.p2_nama || doc["P2 Nama"] || doc.ttd1_nama || doc["TTD1 Nama"] || '-'}</span></div>
+                        <div class="flex justify-between gap-4"><span class="font-semibold text-slate-500 flex-shrink-0">Tanggal:</span> <span class="text-right text-slate-500 text-[10px]">${doc.tanggal || doc["Hari Tanggal"] || '-'}</span></div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        // Pengisian Formulir Otomatis (Auto-fill) dari Dokumen yang Dipilih
+        function loadDocumentData(nomorBa) {
+            const doc = cachedDocuments.find(d => (d.nomor_ba === nomorBa || d["Nomor BA"] === nomorBa));
+            if (!doc) return;
+
+            // Mapping adaptif jika kunci masih berformat spasi/kapital
+            const nomor_ba = doc.nomor_ba || doc["Nomor BA"] || '';
+            const jenis_ba = doc.jenis_ba || doc["Jenis BA"] || 'BAMB';
+            const pekerjaan = doc.pekerjaan || doc["Pekerjaan"] || '';
+            const lokasi = doc.lokasi || doc["Lokasi"] || 'TTC BSD';
+            const lantai = doc.lantai || doc["Lantai"] || 'Lantai 1';
+            const tanggal = doc.tanggal || doc["Hari Tanggal"] || '';
+            const pukul = doc.pukul || doc["Pukul"] || '';
+            const no_kontrak = doc.no_kontrak || doc["No Kontrak"] || '';
+            const nama_project = doc.nama_project || doc["Nama Project"] || '';
+
+            const p1_nama = doc.p1_nama || doc["P1 Nama"] || '';
+            const p1_dept = doc.p1_dept || doc["P1 Dept"] || '';
+            const p1_hp = doc.p1_hp || doc["P1 HP"] || '';
+            const p2_perusahaan = doc.p2_perusahaan || doc["P2 Perusahaan"] || '';
+            const p2_nama = doc.p2_nama || doc["P2 Nama"] || '';
+            const p2_jabatan = doc.p2_jabatan || doc["P2 Jabatan"] || '';
+            const p2_hp = doc.p2_hp || doc["P2 HP"] || '';
+
+            const ttd1_nama = doc.ttd1_nama || doc["TTD1 Nama"] || '';
+            const ttd2_nama = doc.ttd2_nama || doc["TTD2 Nama"] || '';
+            const ttd3_nama = doc.ttd3_nama || doc["TTD3 Nama"] || '';
+            const ttd4_nama = doc.ttd4_nama || doc["TTD4 Nama"] || '';
+            const ttd5_nama = doc.ttd5_nama || doc["TTD5 Nama"] || '';
+
+            const raw_sig1 = doc.sig1 || doc["Base64 TTD 1"] || null;
+            const raw_sig2 = doc.sig2 || doc["Base64 TTD 2"] || null;
+            const raw_sig3 = doc.sig3 || doc["Base64 TTD 3"] || null;
+            const raw_sig4 = doc.sig4 || doc["Base64 TTD 4"] || null;
+            const raw_sig5 = doc.sig5 || doc["Base64 TTD 5"] || null;
+
+            const raw_foto1 = doc.foto1 || doc["Base64 Foto 1"] || null;
+            const raw_foto2 = doc.foto2 || doc["Base64 Foto 2"] || null;
+            const raw_foto3 = doc.foto3 || doc["Base64 Foto 3"] || null;
+
+            const daftar_barang_raw = doc.daftar_barang || doc["Daftar Barang JSON"] || '[]';
+
+            // Set jenis Berita Acara
+            setDocType(jenis_ba);
+
+            // Set isian data umum
+            document.getElementById('in-nomor-ba').value = nomor_ba;
+            document.getElementById('in-pekerjaan').value = pekerjaan;
+            document.getElementById('in-lokasi').value = lokasi;
+            document.getElementById('in-lantai').value = lantai;
+            document.getElementById('in-tanggal').value = tanggal;
+            document.getElementById('in-pukul').value = pukul;
+            document.getElementById('in-no-kontrak').value = no_kontrak;
+            document.getElementById('in-nama-project').value = nama_project;
+
+            // Set isian pihak bersepakat
+            document.getElementById('in-p1-nama').value = p1_nama;
+            document.getElementById('in-p1-dept').value = p1_dept;
+            document.getElementById('in-p1-hp').value = p1_hp;
+            document.getElementById('in-p2-perusahaan').value = p2_perusahaan;
+            document.getElementById('in-p2-nama').value = p2_nama;
+            document.getElementById('in-p2-jabatan').value = p2_jabatan;
+            document.getElementById('in-p2-hp').value = p2_hp;
+
+            // Set nama penandatangan
+            document.getElementById('in-ttd1-nama').value = ttd1_nama;
+            document.getElementById('in-ttd2-nama').value = ttd2_nama;
+            document.getElementById('in-ttd3-nama').value = ttd3_nama;
+            document.getElementById('in-ttd4-nama').value = ttd4_nama;
+            document.getElementById('in-ttd5-nama').value = ttd5_nama;
+
+            // Set dan bongkar dinamis baris barang
+            const container = document.getElementById('barang-inputs-container');
+            container.innerHTML = '';
+            barangRowCounter = 0;
+
+            try {
+                const listBarang = JSON.parse(daftar_barang_raw);
+                if (listBarang.length > 0) {
+                    listBarang.forEach(item => {
+                        barangRowCounter++;
+                        const rowHTML = `
+                            <div class="barang-row bg-slate-50 p-3 rounded-lg border border-slate-200 relative" data-row-id="${barangRowCounter}">
+                                <div class="absolute top-2 right-2 text-slate-400 font-bold text-xs">#${barangRowCounter}</div>
+                                ${barangRowCounter > 1 ? `
+                                <button onclick="removeBarangRow(${barangRowCounter})" class="absolute top-2 right-8 text-rose-500 hover:text-rose-700 transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                                ` : ''}
+                                <div class="space-y-2 mt-1">
+                                    <div>
+                                        <label class="block text-[10px] font-semibold uppercase text-slate-500">Jenis Barang</label>
+                                        <input type="text" value="${item.jenis || item.jenis_barang || ''}" oninput="updatePreview()" class="row-jenis-barang w-full text-xs px-2 py-1.5 border rounded">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="block text-[10px] font-semibold uppercase text-slate-500">Jumlah</label>
+                                            <input type="number" value="${item.jumlah || '0'}" oninput="updatePreview()" class="row-jumlah w-full text-xs px-2 py-1.5 border rounded">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-semibold uppercase text-slate-500">Satuan</label>
+                                            <input type="text" value="${item.satuan || 'Unit'}" oninput="updatePreview()" class="row-satuan w-full text-xs px-2 py-1.5 border rounded">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-semibold uppercase text-slate-500">Keterangan</label>
+                                        <input type="text" value="${item.keterangan || ''}" oninput="updatePreview()" class="row-keterangan w-full text-xs px-2 py-1.5 border rounded">
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.insertAdjacentHTML('beforeend', rowHTML);
+                    });
+                } else {
+                    addBarangRow();
+                }
+            } catch (e) {
+                console.error("Gagal mendefinisikan array barang:", e);
+                addBarangRow();
+            }
+
+            // Memuat tanda tangan (Base64)
+            signatures.sig1 = raw_sig1;
+            signatures.sig2 = raw_sig2;
+            signatures.sig3 = raw_sig3;
+            signatures.sig4 = raw_sig4;
+            signatures.sig5 = raw_sig5;
+
+            // Memuat foto lampiran bukti fisik
+            photos[0] = raw_foto1;
+            photos[1] = raw_foto2;
+            photos[2] = raw_foto3;
+
+            for (let i = 0; i < 3; i++) {
+                const imgSlot = document.getElementById(`slot-preview-${i}`);
+                const placeholderSlot = document.getElementById(`slot-placeholder-${i}`);
+                const removeBtn = document.getElementById(`slot-remove-${i}`);
+                
+                if (photos[i]) {
+                    imgSlot.src = photos[i];
+                    imgSlot.classList.remove('hidden');
+                    placeholderSlot.classList.add('hidden');
+                    removeBtn.classList.remove('hidden');
+                } else {
+                    imgSlot.classList.add('hidden');
+                    placeholderSlot.classList.remove('hidden');
+                    removeBtn.classList.add('hidden');
+                }
+            }
+
+            // Sinkronkan status Cloud
+            document.getElementById('cloud-sync-status').innerText = "Tersinkronisasi (Dimuat)";
+            document.getElementById('cloud-sync-indicator').className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+            document.getElementById('appsheet-doc-id').value = nomor_ba;
+
+            // Muat Ulang Live Preview
+            updatePreview();
+            
+            // Periksa apakah ini mode pratinjau saja sebelum mengalihkan tab
+            if (!document.body.classList.contains('preview-only-active')) {
+                switchTab('tab-umum');
+                showToast(`Data BA ${nomor_ba} Sukses Dimuat!`, "success");
+            }
+        }
+
+        // Pengurusan Lakaran Sentuh / Tetikus pada Canvas TTD
+        window.addEventListener('DOMContentLoaded', () => {
+            sigCanvas = document.getElementById('signature-canvas');
+            sigCtx = sigCanvas.getContext('2d');
+
+            sigCanvas.addEventListener('mousedown', startDrawing);
+            sigCanvas.addEventListener('mousemove', draw);
+            sigCanvas.addEventListener('mouseup', stopDrawing);
+            sigCanvas.addEventListener('mouseout', stopDrawing);
+
+            sigCanvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const rect = sigCanvas.getBoundingClientRect();
+                isDrawing = true;
+                sigCtx.beginPath();
+                sigCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                e.preventDefault();
+            });
+
+            sigCanvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing) return;
+                const touch = e.touches[0];
+                const rect = sigCanvas.getBoundingClientRect();
+                sigCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                sigCtx.strokeStyle = '#000000';
+                sigCtx.lineWidth = 2.5;
+                sigCtx.lineCap = 'round';
+                sigCtx.stroke();
+                e.preventDefault();
+            });
+
+            sigCanvas.addEventListener('touchend', stopDrawing);
+
+            function startDrawing(e) {
+                isDrawing = true;
+                sigCtx.beginPath();
+                const rect = sigCanvas.getBoundingClientRect();
+                sigCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                const rect = sigCanvas.getBoundingClientRect();
+                sigCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+                sigCtx.strokeStyle = '#000000';
+                sigCtx.lineWidth = 2.5;
+                sigCtx.lineCap = 'round';
+                sigCtx.stroke();
+            }
+
+            function stopDrawing() {
+                isDrawing = false;
+            }
+
+            // Jalankan deteksi rute URL pada saat startup awal aplikasi
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewMode = urlParams.get('view');
+            const baNumber = urlParams.get('ba');
+            
+            // Load kustomisasi domain jika ada
+            loadCustomDomain();
+            
+            if (viewMode === '1' && baNumber) {
+                // Konfigurasi Antarmuka Khusus Mode Pratinjau Saja
+                document.getElementById('preview-mode-bar').classList.remove('hidden');
+                document.getElementById('preview-loader').classList.remove('hidden');
+                document.body.classList.add('preview-only-active');
+                
+                // Muat Dokumen secara langsung dari basis data awan
+                loadSharedDocument(baNumber);
+            } else {
+                // Jalankan tetapan permulaan standar ketika aplikasi diakses biasa
+                initAutoDateTime();
+                initNomorBA();
+                setSigLayout('inline');
+                setDocType('BAMB');
+                updatePreview();
+            }
+        });
+    </script>
+</body>
+</html>
+
+```
