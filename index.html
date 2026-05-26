@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -2191,8 +2191,54 @@
                 updatePreview();
             }
         });
+        // Cari atau masukkan kode ini di bagian JavaScript index.html GitHub Anda:
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const nomorBA = urlParams.get('ba');
+
+    if (nomorBA) {
+        // Tembak API localhost yang baru saja kita buat di atas
+        const apiUrl = `http://localhost/simba/modul/get_preview_data.php?ba=${encodeURIComponent(nomorBA)}`;
+
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    const dbData = result.data;
+                    
+                    // SUNTIKKAN DATA MYSQL KE ELEMEN HTML PREVIEW ANDA
+                    // Sesuaikan ID di bawah ini dengan ID elemen teks dokumen Anda
+                    if(document.getElementById('view-nomor-ba')) document.getElementById('view-nomor-ba').innerText = dbData.nomor_ba;
+                    if(document.getElementById('view-pekerjaan')) document.getElementById('view-pekerjaan').innerText = dbData.pekerjaan_service;
+                    if(document.getElementById('view-lokasi')) document.getElementById('view-lokasi').innerText = dbData.lokasi;
+                    if(document.getElementById('view-tanggal')) document.getElementById('view-tanggal').innerText = dbData.hari_tanggal;
+                    
+                    // Suntik Tanda Tangan jika ada
+                    if(document.getElementById('view-ttd-pembawa')) document.getElementById('view-ttd-pembawa').innerText = dbData.ttd_pembawa_barang;
+                    if(document.getElementById('view-ttd-disetujui')) document.getElementById('view-ttd-disetujui').innerText = dbData.ttd_disetujui;
+                    
+                    // SUNTIKKAN DATA BARANG KE TABEL PREVIEW
+                    const tableBody = document.getElementById('preview-table-body'); // sesuaikan ID bodi tabel Anda
+                    if (tableBody && dbData.detail_barang) {
+                        tableBody.innerHTML = ''; // bersihkan mock-data bawaan script
+                        dbData.detail_barang.forEach((item, index) => {
+                            tableBody.innerHTML += `
+                                <tr>
+                                    <td class="border px-2 py-1 text-center">${index + 1}</td>
+                                    <td class="border px-2 py-1">${item.jenis_barang}</td>
+                                    <td class="border px-2 py-1 text-center">${item.jumlah}</td>
+                                    <td class="border px-2 py-1 text-center">${item.satuan}</td>
+                                    <td class="border px-2 py-1">${item.keterangan || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                }
+            })
+            .catch(error => console.error('Gagal mengambil data MySQL:', error));
+    }
+});
     </script>
 </body>
 </html>
 
-```
